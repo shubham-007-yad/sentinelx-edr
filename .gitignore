@@ -19,3 +19,13 @@ build/
 coverage/
 
 .DS_Store
+
+# Python
+__pycache__/
+*.pyc
+venv/
+backend/venv/
+.env
+
+# Node
+frontend/node_modules/
