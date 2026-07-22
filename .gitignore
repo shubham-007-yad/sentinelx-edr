@@ -1,31 +1,55 @@
-__pycache__/
-*.pyc
-.venv/
-venv/
-
-node_modules/
-
+# Environment Variables & Secrets
 .env
+.env.*
+!.env.example
+*.env
+*.pem
+*.key
+*.p12
+*.pfx
+*.asc
+*.cer
+*.crt
+id_rsa*
+id_ed25519*
 
-dist/
-
-build/
-
-.idea/
-.vscode/
-
+# Databases
 *.db
-
-coverage/
-
-.DS_Store
+*.sqlite
+*.sqlite3
+*.dump
 
 # Python
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+*.egg-info/
+.venv/
 venv/
 backend/venv/
-.env
+backend/__pycache__/
 
-# Node
+# Node / JS
+node_modules/
 frontend/node_modules/
+dist/
+frontend/dist/
+build/
+frontend/build/
+.npm/
+.yarn/
+.next/
+
+# Logs
+*.log
+logs/
+
+# IDEs and System Files
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
