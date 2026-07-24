@@ -1,7 +1,7 @@
 import sys
 from config import config
 from logger import logger
-from collectors import collect_system_info
+from collectors import collect_system_info, get_system_info_json
 from api import APIClient
 
 
@@ -18,8 +18,10 @@ def main():
     # 2. Collect local system information
     logger.info("Collecting local system diagnostics...")
     sys_info = collect_system_info()
-    for key, value in sys_info.items():
-        logger.info(f" - System Info: {key} = {value}")
+    json_output = get_system_info_json()
+    logger.info("System Diagnostics JSON Payload:")
+    for line in json_output.splitlines():
+        logger.info(f"  {line}")
 
     # 3. Initialize API client and perform backend registration
     logger.info(f"Initializing API client for backend: {config.BACKEND_URL}")

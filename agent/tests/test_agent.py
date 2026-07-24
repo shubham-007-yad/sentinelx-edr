@@ -1,5 +1,6 @@
+import json
 from config import config
-from collectors import collect_system_info
+from collectors import SystemInfoCollector, collect_system_info, get_system_info_json
 from api import APIClient
 
 
@@ -12,14 +13,29 @@ def test_config_loading():
     assert "AGENT_VERSION" in display_dict
 
 
-def test_sys_info_collector():
+def test_sys_info_collector_fields():
     info = collect_system_info()
-    assert "hostname" in info and info["hostname"]
-    assert "ip_address" in info and info["ip_address"]
-    assert "mac_address" in info and info["mac_address"]
-    assert "os_type" in info and info["os_type"] in ["WINDOWS", "LINUX", "MACOS", "OTHER"]
-    assert "os_version" in info and info["os_version"]
+    required_keys = [
+        "hostname", "os", "os_type", "os_version", "architecture",
+        "ip", "ip_address", "mac", "mac_address", "agent_version", "python_version"
+    ]
+    for key in required_keys:
+        assert key in info and info[key] is not None
+
+    assert info["os_type"] in ["WINDOWS", "LINUX", "MACOS", "OTHER"]
     assert info["agent_version"] == "1.0.0"
+
+
+def test_sys_info_json_formatting():
+    json_str = get_system_info_json()
+    assert isinstance(json_str, str)
+    parsed = json.loads(json_str)
+    assert parsed["hostname"] is not None
+    assert "os" in parsed
+    assert "architecture" in parsed
+    assert "ip" in parsed
+    assert "mac" in parsed
+    assert "python_version" in parsed
 
 
 def test_api_client_initialization(tmp_path):

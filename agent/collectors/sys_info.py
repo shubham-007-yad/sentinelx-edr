@@ -1,5 +1,7 @@
+import json
 import platform
 import socket
+import sys
 import uuid
 from config import config
 
@@ -38,13 +40,52 @@ def get_os_type() -> str:
     return "OTHER"
 
 
+def get_architecture() -> str:
+    """Returns system architecture string (e.g., 64-bit, 32-bit)."""
+    arch = platform.architecture()[0]
+    return arch if arch else platform.machine()
+
+
+class SystemInfoCollector:
+    """Collector for gathering detailed endpoint system information."""
+
+    def collect(self) -> dict:
+        """
+        Collects endpoint information:
+        Hostname, Operating System, OS Version, Architecture, IP Address,
+        MAC Address, Agent Version, Python Version.
+        """
+        ip = get_ip_address()
+        mac = get_mac_address()
+        os_name = f"{platform.system()} {platform.release()}".strip()
+        os_ver = platform.version() or platform.release()
+        arch = get_architecture()
+        hostname = platform.node() or socket.gethostname()
+
+        return {
+            "hostname": hostname,
+            "os": os_name,
+            "os_type": get_os_type(),
+            "os_version": os_ver,
+            "architecture": arch,
+            "ip": ip,
+            "ip_address": ip,
+            "mac": mac,
+            "mac_address": mac,
+            "agent_version": config.AGENT_VERSION,
+            "python_version": sys.version.split()[0]
+        }
+
+    def to_json(self, indent: int = 2) -> str:
+        """Returns JSON representation of system information."""
+        return json.dumps(self.collect(), indent=indent)
+
+
 def collect_system_info() -> dict:
-    """Collects system details for agent registration and heartbeats."""
-    return {
-        "hostname": platform.node() or socket.gethostname(),
-        "ip_address": get_ip_address(),
-        "mac_address": get_mac_address(),
-        "os_type": get_os_type(),
-        "os_version": f"{platform.system()} {platform.release()}",
-        "agent_version": config.AGENT_VERSION
-    }
+    """Utility function to collect system info dictionary."""
+    return SystemInfoCollector().collect()
+
+
+def get_system_info_json() -> str:
+    """Utility function to return formatted JSON system info string."""
+    return SystemInfoCollector().to_json()

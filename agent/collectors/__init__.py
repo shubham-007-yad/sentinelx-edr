@@ -1,3 +1,11 @@
-from collectors.sys_info import collect_system_info
+from collectors.sys_info import (
+    SystemInfoCollector,
+    collect_system_info,
+    get_system_info_json
+)
 
-__all__ = ["collect_system_info"]
+__all__ = [
+    "SystemInfoCollector",
+    "collect_system_info",
+    "get_system_info_json"
+]
