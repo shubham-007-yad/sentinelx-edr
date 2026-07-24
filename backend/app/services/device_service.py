@@ -1,6 +1,7 @@
 from typing import Optional, List
 from uuid import UUID
 from datetime import datetime, timezone
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 from app.models.device import Device, DeviceStatus, OSType
 from app.schemas.device import DeviceCreate, DeviceUpdate, DeviceHeartbeatRequest
@@ -25,14 +26,17 @@ def get_device_by_hostname(db: Session, hostname: str) -> Optional[Device]:
 def register_device(db: Session, device_in: DeviceCreate) -> Device:
     """
     Register a new device or update an existing device if MAC address or hostname matches.
-    Prevents duplicate device registrations in PostgreSQL database.
+    Uses single-query optimization to reduce PostgreSQL lookup latency.
     """
-    existing_device = None
+    conditions = []
     if device_in.mac_address:
-        existing_device = get_device_by_mac(db, device_in.mac_address)
+        conditions.append(Device.mac_address == device_in.mac_address.strip())
+    if device_in.hostname:
+        conditions.append(Device.hostname == device_in.hostname.strip())
 
-    if not existing_device and device_in.hostname:
-        existing_device = get_device_by_hostname(db, device_in.hostname)
+    existing_device = None
+    if conditions:
+        existing_device = db.query(Device).filter(or_(*conditions)).first()
 
     now = datetime.now(timezone.utc)
 

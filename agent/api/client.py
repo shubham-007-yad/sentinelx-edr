@@ -11,6 +11,11 @@ class APIClient:
     def __init__(self, backend_url: Optional[str] = None):
         self.backend_url = (backend_url or config.BACKEND_URL).rstrip("/")
         self.device_id_file = config.DEVICE_CACHE_FILE
+        self.session = requests.Session()
+        self.session.headers.update({
+            "User-Agent": f"SentinelX-Agent/{config.AGENT_VERSION}",
+            "Accept": "application/json"
+        })
         self.device_id: Optional[str] = self._load_device_id()
 
     def _load_device_id(self) -> Optional[str]:
@@ -39,11 +44,12 @@ class APIClient:
         """
         Flow:
         POST /devices/register -> Receive device_id -> Save locally
+        Reuses persistent HTTP session connection pool for efficiency.
         """
         url = f"{self.backend_url}/devices/register"
         logger.info(f"POST {url}")
         try:
-            response = requests.post(url, json=system_info, timeout=10)
+            response = self.session.post(url, json=system_info, timeout=10)
             logger.info(f"Registration Response Received (HTTP {response.status_code})")
 
             if response.status_code in (200, 201):
@@ -65,6 +71,7 @@ class APIClient:
         """
         Flow:
         Every interval -> POST /devices/heartbeat -> Update last_seen timestamp
+        Reuses persistent HTTP keep-alive session to eliminate connection overhead.
         """
         if not self.device_id:
             self.device_id = self._load_device_id()
@@ -83,7 +90,7 @@ class APIClient:
 
         logger.info(f"POST {url} (device_id: {self.device_id})")
         try:
-            response = requests.post(url, json=payload, timeout=10)
+            response = self.session.post(url, json=payload, timeout=10)
             if response.status_code == 200:
                 data = response.json()
                 logger.info(f"Heartbeat acknowledged! updated last_seen: {data.get('last_seen')}")
@@ -94,3 +101,7 @@ class APIClient:
         except requests.exceptions.RequestException as e:
             logger.error(f"Network error sending heartbeat to {url}: {e}")
             return None
+
+    def close(self):
+        """Closes the underlying HTTP session."""
+        self.session.close()
