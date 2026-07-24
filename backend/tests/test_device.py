@@ -155,3 +155,41 @@ def test_device_heartbeat_not_found():
         "status": "ONLINE"
     })
     assert hb_res.status_code == 404
+
+
+def test_list_devices_endpoint():
+    mac1 = f"00:11:22:88:{str(uuid.uuid4())[:2]}:{str(uuid.uuid4())[:2]}"
+    mac2 = f"00:11:22:99:{str(uuid.uuid4())[:2]}:{str(uuid.uuid4())[:2]}"
+
+    client.post("/api/v1/devices/register", json={"hostname": f"list-host-1-{str(uuid.uuid4())[:4]}", "mac_address": mac1, "os_type": "WINDOWS"})
+    client.post("/api/v1/devices/register", json={"hostname": f"list-host-2-{str(uuid.uuid4())[:4]}", "mac_address": mac2, "os_type": "LINUX"})
+
+    response = client.get("/api/v1/devices")
+    assert response.status_code == 200
+    devices = response.json()
+    assert isinstance(devices, list)
+    assert len(devices) >= 2
+
+    response_filter = client.get("/api/v1/devices?os_type=WINDOWS")
+    assert response_filter.status_code == 200
+    win_devices = response_filter.json()
+    assert all(d["os_type"] == "WINDOWS" for d in win_devices)
+
+
+def test_get_device_by_id_endpoint():
+    mac = f"00:11:22:AA:{str(uuid.uuid4())[:2]}:{str(uuid.uuid4())[:2]}"
+    reg_res = client.post("/api/v1/devices/register", json={"hostname": f"single-host-{str(uuid.uuid4())[:4]}", "mac_address": mac})
+    assert reg_res.status_code == 201
+    device_id = reg_res.json()["id"]
+
+    response = client.get(f"/api/v1/devices/{device_id}")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["id"] == device_id
+    assert data["mac_address"] == mac
+
+
+def test_get_device_by_id_not_found():
+    random_id = str(uuid.uuid4())
+    response = client.get(f"/api/v1/devices/{random_id}")
+    assert response.status_code == 404

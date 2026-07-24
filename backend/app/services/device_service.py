@@ -102,5 +102,19 @@ def record_heartbeat(db: Session, heartbeat_in: DeviceHeartbeatRequest) -> Optio
     return device
 
 
-def get_devices(db: Session, skip: int = 0, limit: int = 100) -> List[Device]:
-    return db.query(Device).offset(skip).limit(limit).all()
+def get_devices(
+    db: Session,
+    skip: int = 0,
+    limit: int = 100,
+    status: Optional[DeviceStatus] = None,
+    os_type: Optional[OSType] = None
+) -> List[Device]:
+    """
+    Retrieves all registered devices with pagination and optional status/OS filtering.
+    """
+    query = db.query(Device)
+    if status:
+        query = query.filter(Device.status == status)
+    if os_type:
+        query = query.filter(Device.os_type == os_type)
+    return query.order_by(Device.created_at.desc()).offset(skip).limit(limit).all()
