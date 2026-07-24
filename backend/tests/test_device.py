@@ -1,8 +1,12 @@
 import uuid
+from fastapi.testclient import TestClient
+from app.main import app
 from app.db.session import SessionLocal
 from app.models.device import Device, DeviceStatus, OSType
 from app.models.user import User, UserRole
 from app.schemas.device import DeviceCreate, DeviceUpdate, DeviceOut
+
+client = TestClient(app)
 
 
 def test_device_model_creation():
@@ -67,3 +71,51 @@ def test_device_schema_validation():
     )
     assert update_schema.status == DeviceStatus.ISOLATED
     assert update_schema.os_type == OSType.WINDOWS
+
+
+def test_device_registration_endpoint():
+    mac = f"00:11:22:33:{str(uuid.uuid4())[:2]}:{str(uuid.uuid4())[:2]}"
+    hostname = f"test-host-{str(uuid.uuid4())[:8]}"
+
+    payload = {
+        "hostname": hostname,
+        "ip_address": "10.0.0.15",
+        "mac_address": mac,
+        "os_type": "LINUX",
+        "os_version": "Ubuntu 22.04 LTS",
+        "agent_version": "1.2.0"
+    }
+
+    # 1. First registration
+    response = client.post("/api/v1/devices/register", json=payload)
+    assert response.status_code == 201
+    data = response.json()
+    assert "id" in data
+    assert data["hostname"] == hostname
+    assert data["mac_address"] == mac
+    assert data["status"] == "ONLINE"
+    assert data["os_type"] == "LINUX"
+    device_id = data["id"]
+
+    # 2. Re-registration (duplicate prevention test)
+    payload_updated = {
+        "hostname": hostname,
+        "ip_address": "10.0.0.99",
+        "mac_address": mac,
+        "os_type": "LINUX",
+        "os_version": "Ubuntu 22.04 LTS",
+        "agent_version": "1.2.1"
+    }
+    re_response = client.post("/api/v1/devices/register", json=payload_updated)
+    assert re_response.status_code == 201
+    re_data = re_response.json()
+    assert re_data["id"] == device_id
+    assert re_data["ip_address"] == "10.0.0.99"
+    assert re_data["agent_version"] == "1.2.1"
+
+
+def test_device_registration_validation_error():
+    response = client.post("/api/v1/devices/register", json={
+        "ip_address": "192.168.1.1"
+    })
+    assert response.status_code == 422
