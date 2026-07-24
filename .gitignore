@@ -53,3 +53,4 @@ logs/
 *.swo
 .DS_Store
 Thumbs.db
+.device_id
