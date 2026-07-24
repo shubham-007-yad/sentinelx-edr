@@ -20,7 +20,6 @@ class APIClient:
                 with open(self.device_id_file, "r") as f:
                     device_id = f.read().strip()
                     if device_id:
-                        logger.info(f"Loaded existing cached Device ID from {self.device_id_file}: {device_id}")
                         return device_id
             except Exception as e:
                 logger.warning(f"Could not read device cache file: {e}")
@@ -60,4 +59,38 @@ class APIClient:
                 return None
         except requests.exceptions.RequestException as e:
             logger.error(f"Network error connecting to backend at {url}: {e}")
+            return None
+
+    def send_heartbeat(self, ip_address: Optional[str] = None) -> Optional[dict]:
+        """
+        Flow:
+        Every interval -> POST /devices/heartbeat -> Update last_seen timestamp
+        """
+        if not self.device_id:
+            self.device_id = self._load_device_id()
+
+        if not self.device_id:
+            logger.warning("Cannot send heartbeat: No cached device_id found. Registering endpoint first.")
+            return None
+
+        url = f"{self.backend_url}/devices/heartbeat"
+        payload = {
+            "device_id": self.device_id,
+            "status": "ONLINE"
+        }
+        if ip_address:
+            payload["ip_address"] = ip_address
+
+        logger.info(f"POST {url} (device_id: {self.device_id})")
+        try:
+            response = requests.post(url, json=payload, timeout=10)
+            if response.status_code == 200:
+                data = response.json()
+                logger.info(f"Heartbeat acknowledged! updated last_seen: {data.get('last_seen')}")
+                return data
+            else:
+                logger.error(f"Heartbeat failed with HTTP {response.status_code}: {response.text}")
+                return None
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Network error sending heartbeat to {url}: {e}")
             return None

@@ -119,3 +119,39 @@ def test_device_registration_validation_error():
         "ip_address": "192.168.1.1"
     })
     assert response.status_code == 422
+
+
+def test_device_heartbeat_endpoint():
+    mac = f"00:11:22:77:{str(uuid.uuid4())[:2]}:{str(uuid.uuid4())[:2]}"
+    hostname = f"hb-host-{str(uuid.uuid4())[:8]}"
+
+    # Register device first
+    reg_res = client.post("/api/v1/devices/register", json={
+        "hostname": hostname,
+        "mac_address": mac,
+        "os_type": "LINUX"
+    })
+    assert reg_res.status_code == 201
+    device_id = reg_res.json()["id"]
+
+    # Send heartbeat
+    hb_res = client.post("/api/v1/devices/heartbeat", json={
+        "device_id": device_id,
+        "ip_address": "192.168.1.222",
+        "status": "ONLINE"
+    })
+    assert hb_res.status_code == 200
+    hb_data = hb_res.json()
+    assert hb_data["device_id"] == device_id
+    assert hb_data["status"] == "ONLINE"
+    assert "last_seen" in hb_data
+    assert hb_data["message"] == "Heartbeat recorded successfully"
+
+
+def test_device_heartbeat_not_found():
+    random_id = str(uuid.uuid4())
+    hb_res = client.post("/api/v1/devices/heartbeat", json={
+        "device_id": random_id,
+        "status": "ONLINE"
+    })
+    assert hb_res.status_code == 404

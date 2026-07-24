@@ -94,3 +94,25 @@ class DeviceOut(DeviceBase):
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class DeviceHeartbeatRequest(BaseModel):
+    device_id: UUID
+    ip_address: Optional[str] = None
+    status: Optional[DeviceStatus] = DeviceStatus.ONLINE
+
+    @field_validator("status", mode="before")
+    @classmethod
+    def normalize_status(cls, v: Union[str, DeviceStatus, None]) -> Optional[DeviceStatus]:
+        if v is not None:
+            return DeviceBase.normalize_status(v)
+        return DeviceStatus.ONLINE
+
+
+class DeviceHeartbeatResponse(BaseModel):
+    message: str = "Heartbeat received"
+    device_id: UUID
+    status: DeviceStatus
+    last_seen: datetime
+
+    model_config = ConfigDict(from_attributes=True)

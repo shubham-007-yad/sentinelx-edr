@@ -3,7 +3,7 @@ from uuid import UUID
 from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 from app.models.device import Device, DeviceStatus, OSType
-from app.schemas.device import DeviceCreate, DeviceUpdate
+from app.schemas.device import DeviceCreate, DeviceUpdate, DeviceHeartbeatRequest
 
 
 def get_device_by_id(db: Session, device_id: UUID) -> Optional[Device]:
@@ -77,6 +77,29 @@ def register_device(db: Session, device_in: DeviceCreate) -> Device:
     db.commit()
     db.refresh(db_device)
     return db_device
+
+
+def record_heartbeat(db: Session, heartbeat_in: DeviceHeartbeatRequest) -> Optional[Device]:
+    """
+    Updates last_seen timestamp, status to ONLINE, and optional ip_address for a device.
+    """
+    device = get_device_by_id(db, heartbeat_in.device_id)
+    if not device:
+        return None
+
+    now = datetime.now(timezone.utc)
+    device.last_seen = now
+    device.status = heartbeat_in.status or DeviceStatus.ONLINE
+    device.is_active = True
+    device.updated_at = now
+
+    if heartbeat_in.ip_address:
+        device.ip_address = heartbeat_in.ip_address
+
+    db.add(device)
+    db.commit()
+    db.refresh(device)
+    return device
 
 
 def get_devices(db: Session, skip: int = 0, limit: int = 100) -> List[Device]:

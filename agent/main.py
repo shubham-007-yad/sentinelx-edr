@@ -1,3 +1,4 @@
+import time
 import sys
 from config import config
 from logger import logger
@@ -5,7 +6,12 @@ from collectors import collect_system_info, get_system_info_json
 from api import APIClient
 
 
-def main():
+def run_heartbeat_cycle(client: APIClient, sys_info: dict):
+    """Executes a single heartbeat cycle."""
+    return client.send_heartbeat(ip_address=sys_info.get("ip_address"))
+
+
+def main(once: bool = False):
     logger.info("==================================================")
     logger.info(f" Starting SentinelX EDR Agent v{config.AGENT_VERSION}")
     logger.info("==================================================")
@@ -33,7 +39,21 @@ def main():
     else:
         logger.warning("Agent started, but backend registration pending connection.")
 
-    logger.info("SentinelX EDR Agent foundation runner completed initial startup cycle.")
+    # 4. Heartbeat execution
+    logger.info(f"Executing heartbeat worker (Interval: {config.HEARTBEAT_INTERVAL}s)...")
+    run_heartbeat_cycle(client, sys_info)
+
+    if once or "--once" in sys.argv:
+        logger.info("Single-pass execution complete.")
+        return
+
+    try:
+        while True:
+            time.sleep(config.HEARTBEAT_INTERVAL)
+            logger.info("Executing heartbeat cycle...")
+            run_heartbeat_cycle(client, sys_info)
+    except KeyboardInterrupt:
+        logger.info("SentinelX EDR Agent stopped by signal.")
 
 
 if __name__ == "__main__":
