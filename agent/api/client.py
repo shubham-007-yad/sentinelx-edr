@@ -1,4 +1,5 @@
 import os
+import time
 from typing import Optional
 import requests
 from config import config
@@ -101,6 +102,48 @@ class APIClient:
         except requests.exceptions.RequestException as e:
             logger.error(f"Network error sending heartbeat to {url}: {e}")
             return None
+
+    def send_usb_event(self, event_data: dict, max_retries: int = 3, initial_delay: float = 1.0) -> Optional[dict]:
+        """
+        Flow:
+        USB Event Detected -> POST /usb/events -> Backend stores event.
+        Includes automatic retries with exponential backoff for temporary network failures.
+        """
+        if not self.device_id:
+            self.device_id = self._load_device_id()
+
+        if not self.device_id:
+            logger.warning("Cannot send USB event: No cached device_id found. Endpoint registration required first.")
+            return None
+
+        payload = dict(event_data)
+        payload["device_id"] = self.device_id
+
+        url = f"{self.backend_url}/usb/events"
+        logger.info(f"Uploading USB event to backend: POST {url} (device_id: {self.device_id}, drive: {payload.get('drive_letter')}, type: {payload.get('event_type')})")
+
+        delay = initial_delay
+        for attempt in range(1, max_retries + 1):
+            try:
+                response = self.session.post(url, json=payload, timeout=10)
+                if response.status_code in (200, 201):
+                    data = response.json()
+                    logger.info(f"USB event successfully uploaded to backend! Event ID: {data.get('id')}")
+                    return data
+                else:
+                    logger.error(f"USB event upload failed with HTTP {response.status_code}: {response.text}")
+                    if 400 <= response.status_code < 500 and response.status_code != 429:
+                        return None
+            except requests.exceptions.RequestException as e:
+                logger.warning(f"Temporary network failure sending USB event (Attempt {attempt}/{max_retries}): {e}")
+
+            if attempt < max_retries:
+                logger.info(f"Retrying USB event upload in {delay}s...")
+                time.sleep(delay)
+                delay *= 2
+
+        logger.error(f"Failed to upload USB event after {max_retries} attempts.")
+        return None
 
     def close(self):
         """Closes the underlying HTTP session."""

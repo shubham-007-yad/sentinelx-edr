@@ -3,6 +3,7 @@ import sys
 from config import config
 from logger import logger
 from collectors import collect_system_info, get_system_info_json
+from detectors import USBDetectorService, USBEventData
 from api import APIClient
 
 
@@ -39,13 +40,28 @@ def main(once: bool = False):
     else:
         logger.warning("Agent started, but backend registration pending connection.")
 
-    # 4. Heartbeat execution
+    # 4. Initialize and start USB Detector Service
+    logger.info("Initializing USB Detection Engine...")
+    usb_service = USBDetectorService()
+
+    def on_usb_event(event: USBEventData):
+        logger.info(f"⚡ [USB Event] Type: {event.event_type} | Drive: {event.drive_letter} | Volume: {event.volume_label}")
+        client.send_usb_event(event.to_dict())
+
+    usb_service.event_listener.register_callback(on_usb_event)
+
+    # 5. Heartbeat execution
     logger.info(f"Executing heartbeat worker (Interval: {config.HEARTBEAT_INTERVAL}s)...")
     run_heartbeat_cycle(client, sys_info)
 
     if once or "--once" in sys.argv:
+        logger.info("Running single-pass USB scan...")
+        usb_service.scan_and_detect()
         logger.info("Single-pass execution complete.")
         return
+
+    logger.info("Starting background USB monitoring worker thread...")
+    usb_service.start_monitoring(interval=2.0)
 
     try:
         while True:
@@ -53,7 +69,10 @@ def main(once: bool = False):
             logger.info("Executing heartbeat cycle...")
             run_heartbeat_cycle(client, sys_info)
     except KeyboardInterrupt:
-        logger.info("SentinelX EDR Agent stopped by signal.")
+        logger.info("SentinelX EDR Agent stopping by signal...")
+    finally:
+        usb_service.stop_monitoring()
+        logger.info("SentinelX EDR Agent stopped.")
 
 
 if __name__ == "__main__":
