@@ -219,8 +219,8 @@ class MockUSBDetector(BaseUSBDetector):
 class USBDetectorService:
     """
     USB Detector Service.
-    Monitors USB device connections/disconnections by polling connected drive snapshots
-    and triggering event listener callbacks for INSERT and REMOVE events.
+    Monitors USB device connections/disconnections by polling connected drive snapshots,
+    performing duplicate event filtering, and triggering event listener callbacks for INSERT and REMOVE events.
     """
 
     def __init__(self, detector: Optional[BaseUSBDetector] = None):
@@ -231,47 +231,59 @@ class USBDetectorService:
 
         self.event_listener = USBEventListener()
         self.previous_drives: Dict[str, USBDeviceDetails] = {}
+        self._last_emitted_event: Dict[str, str] = {}  # Cache to prevent duplicate event emissions per drive
         self._running = False
         self._thread: Optional[threading.Thread] = None
 
     def scan_and_detect(self) -> List[USBEventData]:
         """
         Scans current connected USB drives, compares against previous snapshot,
-        emits INSERT / REMOVE events via event_listener, and updates state.
-        Returns list of newly detected USBEventData.
+        filters duplicate events, emits INSERT / REMOVE events via event_listener,
+        and updates state. Returns list of newly detected USBEventData.
         """
-        current_drives = self.detector.get_connected_usb_drives()
+        try:
+            current_drives = self.detector.get_connected_usb_drives()
+        except Exception as e:
+            logger.error(f"[USBDetectorService] Exception while scanning connected USB drives: {e}")
+            return []
+
         events: List[USBEventData] = []
 
         # Detect INSERT events (drives present now, but not in previous snapshot)
         for drive_letter, details in current_drives.items():
             if drive_letter not in self.previous_drives:
-                event = USBEventData(
-                    event_type="INSERT",
-                    drive_letter=details.drive_letter,
-                    volume_label=details.volume_label,
-                    filesystem=details.filesystem,
-                    total_size=details.total_size,
-                    free_space=details.free_space,
-                    serial_number=details.serial_number
-                )
-                events.append(event)
-                self.event_listener.emit(event)
+                # Deduplication check: Only emit INSERT if last emitted event was not INSERT
+                if self._last_emitted_event.get(drive_letter) != "INSERT":
+                    event = USBEventData(
+                        event_type="INSERT",
+                        drive_letter=details.drive_letter,
+                        volume_label=details.volume_label,
+                        filesystem=details.filesystem,
+                        total_size=details.total_size,
+                        free_space=details.free_space,
+                        serial_number=details.serial_number
+                    )
+                    events.append(event)
+                    self._last_emitted_event[drive_letter] = "INSERT"
+                    self.event_listener.emit(event)
 
         # Detect REMOVE events (drives in previous snapshot, but missing now)
         for drive_letter, details in list(self.previous_drives.items()):
             if drive_letter not in current_drives:
-                event = USBEventData(
-                    event_type="REMOVE",
-                    drive_letter=details.drive_letter,
-                    volume_label=details.volume_label,
-                    filesystem=details.filesystem,
-                    total_size=details.total_size,
-                    free_space=details.free_space,
-                    serial_number=details.serial_number
-                )
-                events.append(event)
-                self.event_listener.emit(event)
+                # Deduplication check: Only emit REMOVE if last emitted event was not REMOVE
+                if self._last_emitted_event.get(drive_letter) != "REMOVE":
+                    event = USBEventData(
+                        event_type="REMOVE",
+                        drive_letter=details.drive_letter,
+                        volume_label=details.volume_label,
+                        filesystem=details.filesystem,
+                        total_size=details.total_size,
+                        free_space=details.free_space,
+                        serial_number=details.serial_number
+                    )
+                    events.append(event)
+                    self._last_emitted_event[drive_letter] = "REMOVE"
+                    self.event_listener.emit(event)
 
         self.previous_drives = current_drives
         return events
