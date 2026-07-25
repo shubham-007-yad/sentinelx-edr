@@ -7,23 +7,27 @@ from app.schemas.usb_event import USBEventCreate
 
 def create_usb_event(db: Session, event_in: USBEventCreate) -> USBEvent:
     """Creates a new USB event record in database."""
-    db_event = USBEvent(
-        device_id=event_in.device_id,
-        event_type=event_in.event_type,
-        drive_letter=event_in.drive_letter,
-        volume_label=event_in.volume_label,
-        filesystem=event_in.filesystem,
-        total_size=event_in.total_size,
-        free_space=event_in.free_space,
-        serial_number=event_in.serial_number,
-    )
-    if event_in.detected_at:
-        db_event.detected_at = event_in.detected_at
+    try:
+        db_event = USBEvent(
+            device_id=event_in.device_id,
+            event_type=event_in.event_type,
+            drive_letter=event_in.drive_letter,
+            volume_label=event_in.volume_label,
+            filesystem=event_in.filesystem,
+            total_size=event_in.total_size,
+            free_space=event_in.free_space,
+            serial_number=event_in.serial_number,
+        )
+        if event_in.detected_at:
+            db_event.detected_at = event_in.detected_at
 
-    db.add(db_event)
-    db.commit()
-    db.refresh(db_event)
-    return db_event
+        db.add(db_event)
+        db.commit()
+        db.refresh(db_event)
+        return db_event
+    except Exception:
+        db.rollback()
+        raise
 
 
 def get_usb_events(

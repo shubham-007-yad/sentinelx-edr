@@ -56,12 +56,12 @@ class USBMetadataCollector:
             vol_success = kernel32.GetVolumeInformationW(
                 ctypes.c_wchar_p(drive_path),
                 volume_name_buf,
-                ctypes.sizeof(volume_name_buf),
+                len(volume_name_buf),
                 ctypes.byref(serial_number),
                 ctypes.byref(max_component_len),
                 ctypes.byref(file_system_flags),
                 file_system_buf,
-                ctypes.sizeof(file_system_buf)
+                len(file_system_buf)
             )
 
             if vol_success:
