@@ -56,6 +56,7 @@ class Device(Base):
         index=True
     )
     user = relationship("User", back_populates="devices")
+    usb_events = relationship("USBEvent", back_populates="device", cascade="all, delete-orphan")
 
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(
