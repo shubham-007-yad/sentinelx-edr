@@ -110,10 +110,24 @@ export const USBActivity: React.FC = () => {
                 fontSize: "0.9rem",
                 fontWeight: "600",
                 padding: "0.4rem 0.8rem",
-                borderRadius: "6px",
+                borderRadius: "6px"
               }}
             >
               USB Activity
+            </Link>
+            <Link
+              to="/usb-scans"
+              style={{
+                color: "var(--text-muted)",
+                textDecoration: "none",
+                fontSize: "0.9rem",
+                fontWeight: "600",
+                padding: "0.4rem 0.8rem",
+                borderRadius: "6px",
+                transition: "all 0.2s"
+              }}
+            >
+              USB Scan Results
             </Link>
           </nav>
         </div>

@@ -5,6 +5,7 @@ import { Login } from "./pages/Login";
 import { Register } from "./pages/Register";
 import { Dashboard } from "./pages/Dashboard";
 import { USBActivity } from "./pages/USBActivity";
+import { USBScanResults } from "./pages/USBScanResults";
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated, isLoading } = useAuth();
@@ -44,6 +45,14 @@ export function App() {
             element={
               <ProtectedRoute>
                 <USBActivity />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/usb-scans"
+            element={
+              <ProtectedRoute>
+                <USBScanResults />
               </ProtectedRoute>
             }
           />
