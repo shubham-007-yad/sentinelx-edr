@@ -7,6 +7,9 @@ from detectors import USBDetectorService, USBEventData
 from api import APIClient
 
 
+from background_scanner import USBScanPipelineWorker
+
+
 def run_heartbeat_cycle(client: APIClient, sys_info: dict):
     """Executes a single heartbeat cycle."""
     return client.send_heartbeat(ip_address=sys_info.get("ip_address"))
@@ -40,13 +43,23 @@ def main(once: bool = False):
     else:
         logger.warning("Agent started, but backend registration pending connection.")
 
+    # Initialize Automated Background Scanner Pipeline Worker
+    scan_worker = USBScanPipelineWorker(api_client=client)
+    scan_worker.start()
+
     # 4. Initialize and start USB Detector Service
     logger.info("Initializing USB Detection Engine...")
     usb_service = USBDetectorService()
 
     def on_usb_event(event: USBEventData):
         logger.info(f"⚡ [USB Event] Type: {event.event_type} | Drive: {event.drive_letter} | Volume: {event.volume_label}")
-        client.send_usb_event(event.to_dict())
+        res = client.send_usb_event(event.to_dict())
+        
+        # Trigger automated file scanning pipeline upon USB INSERT event
+        if res and str(event.event_type).upper() == "INSERT":
+            event_id = res.get("id")
+            if event_id and event.drive_letter:
+                scan_worker.enqueue_scan(usb_event_id=str(event_id), drive_letter=event.drive_letter)
 
     usb_service.event_listener.register_callback(on_usb_event)
 
@@ -57,6 +70,9 @@ def main(once: bool = False):
     if once or "--once" in sys.argv:
         logger.info("Running single-pass USB scan...")
         usb_service.scan_and_detect()
+        # Give scan queue worker time to drain tasks if any
+        time.sleep(2)
+        scan_worker.stop()
         logger.info("Single-pass execution complete.")
         return
 
@@ -72,6 +88,7 @@ def main(once: bool = False):
         logger.info("SentinelX EDR Agent stopping by signal...")
     finally:
         usb_service.stop_monitoring()
+        scan_worker.stop()
         logger.info("SentinelX EDR Agent stopped.")
 
 

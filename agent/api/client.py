@@ -145,6 +145,47 @@ class APIClient:
         logger.error(f"Failed to upload USB event after {max_retries} attempts.")
         return None
 
+    def send_usb_scans(
+        self,
+        scans_data: list,
+        max_retries: int = 3,
+        initial_delay: float = 1.0
+    ) -> Optional[dict]:
+        """
+        Flow:
+        USB Files Scanned & Hashed -> POST /usb/scans -> Backend stores file scan results.
+        Includes automatic retries with exponential backoff for network resilience.
+        """
+        if not scans_data:
+            logger.info("No scan results to upload.")
+            return []
+
+        url = f"{self.backend_url}/usb/scans"
+        logger.info(f"Uploading {len(scans_data)} USB scan results to backend: POST {url}")
+
+        delay = initial_delay
+        for attempt in range(1, max_retries + 1):
+            try:
+                response = self.session.post(url, json=scans_data, timeout=30)
+                if response.status_code in (200, 201):
+                    data = response.json()
+                    logger.info(f"Successfully uploaded {len(scans_data)} USB scan results to backend database!")
+                    return data
+                else:
+                    logger.error(f"USB scan upload failed with HTTP {response.status_code}: {response.text}")
+                    if 400 <= response.status_code < 500 and response.status_code != 429:
+                        return None
+            except requests.exceptions.RequestException as e:
+                logger.warning(f"Temporary network failure uploading USB scans (Attempt {attempt}/{max_retries}): {e}")
+
+            if attempt < max_retries:
+                logger.info(f"Retrying USB scan upload in {delay}s...")
+                time.sleep(delay)
+                delay *= 2
+
+        logger.error(f"Failed to upload USB scan results after {max_retries} attempts.")
+        return None
+
     def close(self):
         """Closes the underlying HTTP session."""
         self.session.close()
