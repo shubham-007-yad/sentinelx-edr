@@ -6,11 +6,15 @@ from app.schemas.device import (
     DeviceHeartbeatRequest, DeviceHeartbeatResponse
 )
 from app.schemas.usb_event import USBEventBase, USBEventCreate, USBEventOut
+from app.schemas.usb_scan import (
+    USBScanResultBase, USBScanResultCreate, USBScanBatchCreate, USBScanResultOut
+)
 
 __all__ = [
     "UserBase", "UserCreate", "UserUpdate", "UserOut",
     "LoginRequest", "Token", "TokenPayload",
     "DeviceBase", "DeviceCreate", "DeviceUpdate", "DeviceOut",
     "DeviceHeartbeatRequest", "DeviceHeartbeatResponse",
-    "USBEventBase", "USBEventCreate", "USBEventOut"
+    "USBEventBase", "USBEventCreate", "USBEventOut",
+    "USBScanResultBase", "USBScanResultCreate", "USBScanBatchCreate", "USBScanResultOut"
 ]
