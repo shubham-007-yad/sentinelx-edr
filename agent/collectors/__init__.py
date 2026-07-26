@@ -8,6 +8,10 @@ from collectors.usb_collector import (
     collect_usb_metadata,
     get_usb_metadata_json
 )
+from usb_scanner import (
+    USBScanner,
+    enumerate_usb_files
+)
 
 __all__ = [
     "SystemInfoCollector",
@@ -16,4 +20,6 @@ __all__ = [
     "USBMetadataCollector",
     "collect_usb_metadata",
     "get_usb_metadata_json",
+    "USBScanner",
+    "enumerate_usb_files",
 ]
