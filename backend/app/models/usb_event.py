@@ -46,6 +46,7 @@ class USBEvent(Base):
     )
 
     device = relationship("Device", back_populates="usb_events")
+    scan_results = relationship("USBScanResult", back_populates="usb_event", cascade="all, delete-orphan")
 
     def __repr__(self) -> str:
         return f"<USBEvent id={self.id} device_id={self.device_id} event_type={self.event_type} drive_letter={self.drive_letter}>"
