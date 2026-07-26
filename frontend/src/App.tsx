@@ -6,6 +6,7 @@ import { Register } from "./pages/Register";
 import { Dashboard } from "./pages/Dashboard";
 import { USBActivity } from "./pages/USBActivity";
 import { USBScanResults } from "./pages/USBScanResults";
+import { UserManagement } from "./pages/UserManagement";
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated, isLoading } = useAuth();
@@ -20,6 +21,28 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
+  }
+
+  return <>{children}</>;
+};
+
+const AdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user, isAuthenticated, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div style={{ display: "flex", minHeight: "100vh", alignItems: "center", justifyContent: "center", background: "var(--bg-primary)", color: "var(--accent-cyan)" }}>
+        Loading SentinelX Security Console...
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (user?.role !== "ADMIN") {
+    return <Navigate to="/dashboard" replace />;
   }
 
   return <>{children}</>;
@@ -54,6 +77,14 @@ export function App() {
               <ProtectedRoute>
                 <USBScanResults />
               </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/users"
+            element={
+              <AdminRoute>
+                <UserManagement />
+              </AdminRoute>
             }
           />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />

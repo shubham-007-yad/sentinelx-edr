@@ -2,11 +2,17 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.api import api_router
-from app.db.database import Base, engine
+from app.db.database import Base, engine, SessionLocal
+from app.db.init_db import init_db
 
 # Create DB tables automatically if they do not exist
 try:
     Base.metadata.create_all(bind=engine)
+    db = SessionLocal()
+    try:
+        init_db(db)
+    finally:
+        db.close()
 except Exception as e:
     print(f"Warning: Could not connect to database on startup ({e}). Ensure DB is running.")
 

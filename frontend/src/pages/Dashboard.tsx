@@ -63,6 +63,24 @@ export const Dashboard: React.FC = () => {
             >
               USB Scan Results
             </Link>
+            {user?.role === "ADMIN" && (
+              <Link
+                to="/users"
+                style={{
+                  color: "#ffaa00",
+                  textDecoration: "none",
+                  fontSize: "0.9rem",
+                  fontWeight: "600",
+                  padding: "0.4rem 0.8rem",
+                  borderRadius: "6px",
+                  border: "1px solid rgba(255, 170, 0, 0.4)",
+                  background: "rgba(255, 170, 0, 0.1)",
+                  transition: "all 0.2s"
+                }}
+              >
+                User Management
+              </Link>
+            )}
           </nav>
         </div>
 

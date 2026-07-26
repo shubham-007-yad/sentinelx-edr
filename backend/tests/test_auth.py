@@ -1,8 +1,23 @@
 import uuid
 from fastapi.testclient import TestClient
 from app.main import app
+from app.db.database import SessionLocal
+from app.db.init_db import init_db
 
 client = TestClient(app)
+
+def get_admin_headers():
+    """Helper to ensure seed Admin user exists, login, and return authorization header."""
+    db = SessionLocal()
+    init_db(db)
+    db.close()
+    res = client.post(
+        "/api/v1/auth/login/json",
+        json={"username_or_email": "admin", "password": "AdminPassword123!"}
+    )
+    assert res.status_code == 200, f"Admin login failed: {res.text}"
+    token = res.json()["access_token"]
+    return {"Authorization": f"Bearer {token}"}
 
 def test_root_and_health():
     """Verify application root and health check endpoints."""
@@ -14,77 +29,35 @@ def test_root_and_health():
     assert res_health.status_code == 200
     assert res_health.json()["status"] == "healthy"
 
-# ===================================================================
-# Phase 8: Comprehensive Verification Test Suite
-# ===================================================================
-
-def test_user_registration():
-    """1. Test User registration."""
-    random_str = str(uuid.uuid4())[:8]
-    email = f"reg_{random_str}@sentinelx.io"
-    username = f"user_reg_{random_str}"
-    password = "SecurePassword123!"
-
+def test_public_registration_disabled():
+    """Verify that public self-registration is disabled (HTTP 403 Forbidden)."""
     response = client.post(
         "/api/v1/auth/register",
         json={
-            "email": email,
-            "username": username,
-            "password": password,
-            "role": "ANALYST"
+            "email": "hacker@evil.com",
+            "username": "hacker",
+            "password": "HackerPassword123!",
+            "role": "ADMIN"
         }
     )
-    assert response.status_code == 201
-    data = response.json()
-    assert data["email"] == email
-    assert data["username"] == username
-    assert data["role"] == "ANALYST"
-    assert "id" in data
-    assert "password_hash" not in data  # Ensure hash is omitted
-
-def test_duplicate_email_handling():
-    """2. Test Duplicate email handling."""
-    random_str = str(uuid.uuid4())[:8]
-    email = f"dup_{random_str}@sentinelx.io"
-    password = "SecurePassword123!"
-
-    # First registration (Succeeds)
-    res1 = client.post(
-        "/api/v1/auth/register",
-        json={
-            "email": email,
-            "username": f"user1_{random_str}",
-            "password": password,
-            "role": "ANALYST"
-        }
-    )
-    assert res1.status_code == 201
-
-    # Second registration with SAME email (Fails with 400 Bad Request)
-    res2 = client.post(
-        "/api/v1/auth/register",
-        json={
-            "email": email,
-            "username": f"user2_{random_str}",
-            "password": password,
-            "role": "ANALYST"
-        }
-    )
-    assert res2.status_code == 400
-    assert "email already exists" in res2.json()["detail"].lower()
+    assert response.status_code == 403
+    assert "public registration is disabled" in response.json()["detail"].lower()
 
 def test_login_with_correct_password():
-    """3. Test Login with correct password."""
+    """Test Login with correct password for Admin-created user."""
+    headers = get_admin_headers()
     random_str = str(uuid.uuid4())[:8]
     email = f"login_good_{random_str}@sentinelx.io"
     username = f"user_good_{random_str}"
     password = "SecurePassword123!"
 
-    # Register
-    client.post(
-        "/api/v1/auth/register",
+    # Admin creates user via POST /users
+    create_res = client.post(
+        "/api/v1/users",
+        headers=headers,
         json={"email": email, "username": username, "password": password, "role": "ANALYST"}
     )
+    assert create_res.status_code == 201
 
     # Login via JSON
     res_json = client.post(
@@ -106,16 +79,18 @@ def test_login_with_correct_password():
     assert "access_token" in res_form.json()
 
 def test_login_with_incorrect_password():
-    """4. Test Login with incorrect password."""
+    """Test Login with incorrect password."""
+    headers = get_admin_headers()
     random_str = str(uuid.uuid4())[:8]
     email = f"login_bad_{random_str}@sentinelx.io"
     username = f"user_bad_{random_str}"
     correct_password = "SecurePassword123!"
     wrong_password = "WrongPassword999!"
 
-    # Register
+    # Admin creates user
     client.post(
-        "/api/v1/auth/register",
+        "/api/v1/users",
+        headers=headers,
         json={"email": email, "username": username, "password": correct_password, "role": "ANALYST"}
     )
 
@@ -128,17 +103,20 @@ def test_login_with_incorrect_password():
     assert "incorrect username/email or password" in response.json()["detail"].lower()
 
 def test_access_me_with_valid_token():
-    """5. Test Accessing /me with a valid token."""
+    """Test Accessing /me with a valid token."""
+    headers = get_admin_headers()
     random_str = str(uuid.uuid4())[:8]
     email = f"me_valid_{random_str}@sentinelx.io"
     username = f"user_me_{random_str}"
     password = "SecurePassword123!"
 
-    # Register & Login
+    # Admin creates new user
     client.post(
-        "/api/v1/auth/register",
-        json={"email": email, "username": username, "password": password, "role": "ADMIN"}
+        "/api/v1/users",
+        headers=headers,
+        json={"email": email, "username": username, "password": password, "role": "ANALYST"}
     )
+    
     login_res = client.post(
         "/api/v1/auth/login/json",
         json={"username_or_email": email, "password": password}
@@ -154,15 +132,13 @@ def test_access_me_with_valid_token():
     me_data = response.json()
     assert me_data["username"] == username
     assert me_data["email"] == email
-    assert me_data["role"] == "ADMIN"
+    assert me_data["role"] == "ANALYST"
 
 def test_access_me_without_token():
-    """6. Test Accessing /me without a token (or with an invalid token)."""
-    # 1. Without Authorization Header (Fails with 401)
+    """Test Accessing /me without a token."""
     res_no_header = client.get("/api/v1/auth/me")
     assert res_no_header.status_code == 401
 
-    # 2. With Invalid Token String (Fails with 401)
     res_invalid_token = client.get(
         "/api/v1/auth/me",
         headers={"Authorization": "Bearer invalid_jwt_token_string"}

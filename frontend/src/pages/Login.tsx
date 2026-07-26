@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useAuth } from "../context/AuthContext";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 export const Login: React.FC = () => {
   const { login } = useAuth();
@@ -78,11 +78,9 @@ export const Login: React.FC = () => {
           </button>
         </form>
 
-        <div style={{ textAlign: "center", marginTop: "1.5rem", fontSize: "0.85rem", color: "var(--text-muted)" }}>
-          Don't have an analyst account?{" "}
-          <Link to="/register" style={{ color: "var(--accent-cyan)", textDecoration: "none", fontWeight: "600" }}>
-            Register Now
-          </Link>
+        <div style={{ textAlign: "center", marginTop: "1.5rem", fontSize: "0.85rem", color: "var(--text-muted)", lineHeight: "1.4" }}>
+          Public registration is disabled.<br />
+          Please contact your SentinelX administrator if you need access.
         </div>
       </div>
     </div>

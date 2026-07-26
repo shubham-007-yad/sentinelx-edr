@@ -17,32 +17,20 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 @router.post(
     "/register",
-    response_model=UserOut,
-    status_code=status.HTTP_201_CREATED,
-    summary="Register a new user",
-    description="Validates user details, hashes password with Bcrypt, and stores the user in PostgreSQL with assigned role."
+    status_code=status.HTTP_403_FORBIDDEN,
+    summary="Register a new user (Disabled)",
+    description="Public registration is disabled. System administrators must create user accounts via POST /api/v1/users."
 )
-def register_user(user_in: UserCreate, db: Session = Depends(get_db)):
+def register_user():
     """
-    1. Validate input (email, username format, password strength)
-    2. Check duplicate email or username
-    3. Hash password using Bcrypt
-    4. Store in PostgreSQL database
-    5. Return created User response (without password hash)
+    Public registration is disabled for enterprise security.
+    All user accounts must be provisioned by a System Administrator.
     """
-    db_user_email = user_service.get_user_by_email(db, email=user_in.email)
-    if db_user_email:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="A user with this email already exists."
-        )
-    db_user_username = user_service.get_user_by_username(db, username=user_in.username)
-    if db_user_username:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="A user with this username already exists."
-        )
-    return user_service.create_user(db, user_in=user_in)
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="Public registration is disabled. Please contact your SentinelX administrator if you need access."
+    )
+
 
 @router.post(
     "/login",
