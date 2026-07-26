@@ -12,6 +12,11 @@ from usb_scanner import (
     USBScanner,
     enumerate_usb_files
 )
+from file_metadata import (
+    FileMetadataCollector,
+    collect_file_metadata,
+    get_file_metadata_json
+)
 
 __all__ = [
     "SystemInfoCollector",
@@ -22,4 +27,7 @@ __all__ = [
     "get_usb_metadata_json",
     "USBScanner",
     "enumerate_usb_files",
+    "FileMetadataCollector",
+    "collect_file_metadata",
+    "get_file_metadata_json",
 ]
