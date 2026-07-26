@@ -17,6 +17,10 @@ from file_metadata import (
     collect_file_metadata,
     get_file_metadata_json
 )
+from file_hasher import (
+    FileHasher,
+    calculate_sha256
+)
 
 __all__ = [
     "SystemInfoCollector",
@@ -30,4 +34,6 @@ __all__ = [
     "FileMetadataCollector",
     "collect_file_metadata",
     "get_file_metadata_json",
+    "FileHasher",
+    "calculate_sha256",
 ]

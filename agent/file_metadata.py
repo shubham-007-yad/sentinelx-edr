@@ -7,14 +7,17 @@ from typing import Dict, Any, Optional
 from logger import logger
 
 
+from file_hasher import calculate_sha256
+
+
 class FileMetadataCollector:
     """
     File Metadata Forensic Extraction Engine.
     Extracts file attributes including name, extension, full path, byte size,
-    created/modified timestamps (UTC ISO 8601), and hidden file attributes.
+    created/modified timestamps (UTC ISO 8601), hidden attributes, and SHA-256 hashes.
     """
 
-    def collect(self, file_path: str) -> Optional[Dict[str, Any]]:
+    def collect(self, file_path: str, include_hash: bool = True) -> Optional[Dict[str, Any]]:
         """
         Extracts metadata for a specified file path.
         Returns a dictionary or None if file is inaccessible.
@@ -38,12 +41,16 @@ class FileMetadataCollector:
 
             file_size = stat_info.st_size
 
+            # SHA-256
+            sha256_digest = calculate_sha256(abs_path) if include_hash else None
+
             return {
                 "file_name": file_name,
                 "extension": ext,
                 "full_path": abs_path,
                 "size": file_size,
                 "file_size": file_size,
+                "sha256": sha256_digest or "",
                 "hidden": hidden_status,
                 "is_hidden": hidden_status,
                 "created_at": created_at,
