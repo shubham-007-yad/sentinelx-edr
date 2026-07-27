@@ -16,16 +16,33 @@ from app.models.threat import ThreatSeverity, ThreatType
 def test_dangerous_extension_rule():
     rule = DangerousExtensionRule()
     res = rule.evaluate(
-        file_name="malicious_script.vbs",
-        full_path="E:\\malicious_script.vbs",
-        extension=".vbs",
+        file_name="installer.exe",
+        full_path="E:\\installer.exe",
+        extension=".exe",
         file_size=1024,
         sha256="abc123sha256"
     )
     assert res is not None
+    assert res.rule_name == "Dangerous Extension Detection"
     assert res.threat_type == ThreatType.SUSPICIOUS_EXTENSION
     assert res.severity == ThreatSeverity.HIGH
-    assert "vbs" in res.description
+    assert ".exe" in res.description
+
+
+def test_phase3_dangerous_extensions_batch():
+    rule = DangerousExtensionRule()
+    phase3_extensions = [".exe", ".dll", ".scr", ".bat", ".cmd", ".com", ".ps1", ".vbs", ".js"]
+    for ext in phase3_extensions:
+        res = rule.evaluate(
+            file_name=f"test_payload{ext}",
+            full_path=f"E:\\test_payload{ext}",
+            extension=ext,
+            file_size=2048,
+            sha256="1234567890abcdef"
+        )
+        assert res is not None, f"Failed to flag dangerous extension {ext}"
+        assert res.severity == ThreatSeverity.HIGH
+        assert res.rule_name == "Dangerous Extension Detection"
 
 
 def test_hidden_executable_rule():
