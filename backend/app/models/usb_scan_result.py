@@ -38,6 +38,7 @@ class USBScanResult(Base):
     )
 
     usb_event = relationship("USBEvent", back_populates="scan_results")
+    threats = relationship("Threat", back_populates="scan_result", cascade="all, delete-orphan")
 
     def __repr__(self) -> str:
         return f"<USBScanResult id={self.id} file_name='{self.file_name}' sha256='{self.sha256}'>"
