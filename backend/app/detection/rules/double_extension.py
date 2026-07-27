@@ -4,7 +4,7 @@ from app.models.threat import ThreatSeverity, ThreatType
 
 
 class DoubleExtensionRule(BaseRule):
-    rule_name = "Deceptive Double Extension Spoofing"
+    rule_name = "Double Extension Detection"
     threat_type = ThreatType.DOUBLE_EXTENSION
     severity = ThreatSeverity.CRITICAL
 
@@ -36,6 +36,6 @@ class DoubleExtensionRule(BaseRule):
                     rule_name=self.rule_name,
                     threat_type=self.threat_type,
                     severity=self.severity,
-                    description=f"File '{file_name}' employs dual extension spoofing ({penultimate_ext}{final_ext}) to mask an executable payload as a document or media file."
+                    description=f"Deceptive double extension spoofing ({penultimate_ext}{final_ext}) detected in '{file_name}'. Disguises executable payload as a document or media file."
                 )
         return None

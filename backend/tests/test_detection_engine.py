@@ -77,15 +77,37 @@ def test_autorun_rule():
 def test_double_extension_rule():
     rule = DoubleExtensionRule()
     res = rule.evaluate(
-        file_name="financial_report.pdf.exe",
-        full_path="E:\\financial_report.pdf.exe",
+        file_name="invoice.pdf.exe",
+        full_path="E:\\invoice.pdf.exe",
         extension=".exe",
         file_size=500000,
         sha256="doubleextsha256"
     )
     assert res is not None
+    assert res.rule_name == "Double Extension Detection"
     assert res.threat_type == ThreatType.DOUBLE_EXTENSION
     assert res.severity == ThreatSeverity.CRITICAL
+
+
+def test_phase4_double_extensions_batch():
+    rule = DoubleExtensionRule()
+    phase4_examples = [
+        "invoice.pdf.exe",
+        "salary.xlsx.scr",
+        "holiday.jpg.vbs",
+        "resume.docx.bat"
+    ]
+    for fname in phase4_examples:
+        res = rule.evaluate(
+            file_name=fname,
+            full_path=f"E:\\{fname}",
+            extension=f".{fname.split('.')[-1]}",
+            file_size=1024,
+            sha256="1234567890abcdef"
+        )
+        assert res is not None, f"Failed to detect double extension spoofing in {fname}"
+        assert res.severity == ThreatSeverity.CRITICAL
+        assert res.rule_name == "Double Extension Detection"
 
 
 def test_known_malware_rule():
