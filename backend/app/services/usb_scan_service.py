@@ -5,8 +5,11 @@ from app.models.usb_scan_result import USBScanResult
 from app.schemas.usb_scan import USBScanResultCreate
 
 
+from app.services import threat_service
+
+
 def create_usb_scan_result(db: Session, scan_in: USBScanResultCreate) -> USBScanResult:
-    """Creates a single USB scan result record in database."""
+    """Creates a single USB scan result record in database and runs threat detection."""
     try:
         db_scan = USBScanResult(
             usb_event_id=scan_in.usb_event_id,
@@ -22,6 +25,10 @@ def create_usb_scan_result(db: Session, scan_in: USBScanResultCreate) -> USBScan
         db.add(db_scan)
         db.commit()
         db.refresh(db_scan)
+
+        # Trigger automatic Threat Detection Engine analysis
+        threat_service.analyze_and_record_threats(db=db, scan_results=[db_scan])
+
         return db_scan
     except Exception:
         db.rollback()
@@ -29,7 +36,7 @@ def create_usb_scan_result(db: Session, scan_in: USBScanResultCreate) -> USBScan
 
 
 def create_usb_scan_results_bulk(db: Session, scans_in: List[USBScanResultCreate]) -> List[USBScanResult]:
-    """Bulk creates USB scan result records in database."""
+    """Bulk creates USB scan result records in database and runs threat detection."""
     if not scans_in:
         return []
     try:
@@ -51,6 +58,10 @@ def create_usb_scan_results_bulk(db: Session, scans_in: List[USBScanResultCreate
         db.commit()
         for s in db_scans:
             db.refresh(s)
+
+        # Trigger automatic Threat Detection Engine analysis
+        threat_service.analyze_and_record_threats(db=db, scan_results=db_scans)
+
         return db_scans
     except Exception:
         db.rollback()

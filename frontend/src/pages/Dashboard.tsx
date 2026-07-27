@@ -36,6 +36,22 @@ export const Dashboard: React.FC = () => {
               Dashboard Overview
             </Link>
             <Link
+              to="/threats"
+              style={{
+                color: "#ff0055",
+                background: "rgba(255, 0, 85, 0.1)",
+                border: "1px solid rgba(255, 0, 85, 0.3)",
+                textDecoration: "none",
+                fontSize: "0.9rem",
+                fontWeight: "600",
+                padding: "0.4rem 0.8rem",
+                borderRadius: "6px",
+                transition: "all 0.2s"
+              }}
+            >
+              Threat Dashboard
+            </Link>
+            <Link
               to="/usb-activity"
               style={{
                 color: "var(--text-muted)",

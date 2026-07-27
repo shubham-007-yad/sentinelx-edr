@@ -6,6 +6,7 @@ import { Register } from "./pages/Register";
 import { Dashboard } from "./pages/Dashboard";
 import { USBActivity } from "./pages/USBActivity";
 import { USBScanResults } from "./pages/USBScanResults";
+import { ThreatDashboard } from "./pages/ThreatDashboard";
 import { UserManagement } from "./pages/UserManagement";
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -60,6 +61,14 @@ export function App() {
             element={
               <ProtectedRoute>
                 <Dashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/threats"
+            element={
+              <ProtectedRoute>
+                <ThreatDashboard />
               </ProtectedRoute>
             }
           />

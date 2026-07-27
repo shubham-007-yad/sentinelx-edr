@@ -10,6 +10,13 @@ class RuleResult:
     threat_type: ThreatType
     severity: ThreatSeverity
     description: str
+    score: int = 0
+
+    def __post_init__(self):
+        if self.score == 0 and self.severity:
+            from app.detection.scoring import threat_scorer
+            self.score = threat_scorer.get_severity_score(self.severity)
+
 
 
 class BaseRule(ABC):

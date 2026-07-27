@@ -1,6 +1,7 @@
 from typing import Optional, Set
 from app.detection.rules.base import BaseRule, RuleResult
 from app.models.threat import ThreatSeverity, ThreatType
+from app.detection.scoring import threat_scorer
 
 
 class DoubleExtensionRule(BaseRule):
@@ -32,10 +33,11 @@ class DoubleExtensionRule(BaseRule):
             penultimate_ext = f".{parts[-2]}"
             final_ext = f".{parts[-1]}"
             if penultimate_ext in self.DOC_IMAGE_EXTENSIONS and final_ext in self.EXECUTABLE_EXTENSIONS:
+                resolved_severity = threat_scorer.get_rule_severity(self.rule_name, default=self.severity)
                 return RuleResult(
                     rule_name=self.rule_name,
                     threat_type=self.threat_type,
-                    severity=self.severity,
+                    severity=resolved_severity,
                     description=f"Deceptive double extension spoofing ({penultimate_ext}{final_ext}) detected in '{file_name}'. Disguises executable payload as a document or media file."
                 )
         return None

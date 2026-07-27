@@ -22,15 +22,24 @@ SentinelX EDR is an Enterprise Endpoint Detection and Response (EDR) solution fe
   - PostgreSQL database table `usb_events` with indexed queries.
   - REST API endpoints for event creation, listing with pagination and filtering, and event detail lookup.
 
-- **Security Console Dashboard (`frontend/`)**:
-  - Real-time **USB Activity** audit console (`/usb-activity`) featuring metrics overview, endpoint filtering, event type filtering, and paginated event table view.
+- **Threat Detection Engine (`backend/app/services/threat_engine.py` & `agent/threat_engine.py`)**:
+  - Signature matching against known malicious SHA-256 fingerprints (e.g. EICAR malware test string).
+  - Deceptive double extension detection (e.g., `invoice.pdf.exe`).
+  - Hidden executable and script detection on removable media.
+  - USB AutoRun script configuration detection (`autorun.inf`).
+  - Suspicious script payload detection (`.vbs`, `.ps1`, `.bat`, `.cmd`, `.scr`, `.hta`).
+  - Anomalous OS process masquerading detection (`svchost.exe`, `lsass.exe`).
+
+- **Interactive Threat Console Dashboard (`frontend/src/pages/ThreatDashboard.tsx`)**:
+  - Real-time **Threat Dashboard** (`/threats`) featuring severity metrics overview, status management, forensic inspection modal, and incident remediation actions.
 
 ---
 
 ## 📖 Complete Documentation & Flow
 
-Detailed architecture diagrams, sequence flow diagrams, API specifications, performance optimizations, and error handling notes are available in:
-📄 **[docs/USB_PIPELINE.md](file:///home/rebelshub/Desktop/sentinelx-edr/SentinelX-EDR/docs/USB_PIPELINE.md)**
+- 📄 **[docs/THREAT_DETECTION_ENGINE.md](file:///home/rebelshub/Desktop/sentinelx-edr/SentinelX-EDR/docs/THREAT_DETECTION_ENGINE.md)** — Day 6 Threat Detection Engine Architecture
+- 📄 **[docs/USB_SCANNING_PIPELINE.md](file:///home/rebelshub/Desktop/sentinelx-edr/SentinelX-EDR/docs/USB_SCANNING_PIPELINE.md)** — Day 5 File Scanning Pipeline
+- 📄 **[docs/USB_PIPELINE.md](file:///home/rebelshub/Desktop/sentinelx-edr/SentinelX-EDR/docs/USB_PIPELINE.md)** — Day 1-4 USB Event Pipeline
 
 ---
 
@@ -49,8 +58,8 @@ cd agent
 PYTHONPATH=. ../backend/venv/bin/pytest
 ```
 
-### Manual & Real USB Verification Script
+### Day 6 Threat Detection Verification Script
 ```bash
 cd agent
-PYTHONPATH=. ../backend/venv/bin/python verify_usb_real.py --mock
+PYTHONPATH=. ../backend/venv/bin/python verify_threat_engine.py --mock
 ```

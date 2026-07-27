@@ -1,6 +1,7 @@
 from typing import Optional, Set
 from app.detection.rules.base import BaseRule, RuleResult
 from app.models.threat import ThreatSeverity, ThreatType
+from app.detection.scoring import threat_scorer
 
 
 class AnomalousFileRule(BaseRule):
@@ -23,10 +24,11 @@ class AnomalousFileRule(BaseRule):
         is_hidden: bool = False
     ) -> Optional[RuleResult]:
         if file_name.lower() in self.ANOMALOUS_SYSTEM_NAMES:
+            resolved_severity = threat_scorer.get_rule_severity(self.rule_name, default=self.severity)
             return RuleResult(
                 rule_name=self.rule_name,
                 threat_type=self.threat_type,
-                severity=self.severity,
+                severity=resolved_severity,
                 description=f"File '{file_name}' matches critical OS system process name but is staged on removable media, indicating potential masquerading."
             )
         return None
