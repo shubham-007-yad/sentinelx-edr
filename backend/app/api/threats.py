@@ -126,5 +126,7 @@ def analyze_usb_event_scans(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"No scan results found for USB event ID '{usb_event_id}'."
         )
-    new_threats = threat_service.analyze_and_record_threats(db=db, scan_results=scans)
-    return new_threats
+    threat_service.analyze_and_record_threats(db=db, scan_results=scans)
+    # Return all threat records associated with this USB event
+    all_threats = threat_service.get_threat_records(db=db, usb_event_id=usb_event_id, limit=1000)
+    return all_threats

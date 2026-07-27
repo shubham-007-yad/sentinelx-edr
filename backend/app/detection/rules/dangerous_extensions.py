@@ -61,7 +61,9 @@ class HiddenExecutableRule(BaseRule):
     ) -> Optional[RuleResult]:
         name_lower = file_name.lower()
         ext_clean = (extension.lower() if extension else "").strip()
-        if ext_clean and not ext_clean.startswith("."):
+        if not ext_clean and "." in file_name:
+            ext_clean = f".{file_name.rsplit('.', 1)[-1].lower()}"
+        elif ext_clean and not ext_clean.startswith("."):
             ext_clean = f".{ext_clean}"
 
         is_dotfile = name_lower.startswith(".") and len(name_lower) > 1
