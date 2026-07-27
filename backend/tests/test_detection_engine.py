@@ -70,8 +70,9 @@ def test_autorun_rule():
         sha256="autorunsha256"
     )
     assert res is not None
+    assert res.rule_name == "Autorun Detection"
     assert res.threat_type == ThreatType.AUTORUN_SCRIPT
-    assert res.severity == ThreatSeverity.HIGH
+    assert res.severity == ThreatSeverity.CRITICAL
 
 
 def test_double_extension_rule():

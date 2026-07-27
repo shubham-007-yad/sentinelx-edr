@@ -4,9 +4,9 @@ from app.models.threat import ThreatSeverity, ThreatType
 
 
 class AutoRunRule(BaseRule):
-    rule_name = "USB AutoRun Configuration Script"
+    rule_name = "Autorun Detection"
     threat_type = ThreatType.AUTORUN_SCRIPT
-    severity = ThreatSeverity.HIGH
+    severity = ThreatSeverity.CRITICAL
 
     def evaluate(
         self,
@@ -25,6 +25,6 @@ class AutoRunRule(BaseRule):
                 rule_name=self.rule_name,
                 threat_type=self.threat_type,
                 severity=self.severity,
-                description=f"USB AutoRun configuration file '{file_name}' detected on removable media. Commonly leveraged by USB worm payloads for automatic execution."
+                description=f"USB AutoRun configuration file '{file_name}' detected on removable media. Classic USB-based persistence mechanism used for automatic malware execution."
             )
         return None
