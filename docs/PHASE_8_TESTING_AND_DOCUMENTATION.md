@@ -126,3 +126,31 @@ cd /home/rebelshub/Desktop/sentinelx-edr/SentinelX-EDR
 PYTHONPATH=backend backend/venv/bin/pytest backend/tests
 ```
 *(All 50 test cases pass cleanly)*
+
+---
+
+## 6. Future Architecture & Alert Correlation Roadmap
+
+As SentinelX scales across larger enterprise environments, **Alert Correlation & Incident Aggregation** will consolidate multiple rule findings for a single file artifact into a single high-fidelity incident:
+
+### Proposed Correlated Incident Schema:
+Instead of emitting separate alerts for a file matching multiple rules (e.g. `.secret.exe` triggering both `Hidden Executable` and `Dangerous Extension`), the engine will group findings by file fingerprint (`sha256` or `full_path`):
+
+```json
+{
+  "incident_id": "8f3b2a1c-99d8-4f11-b0e2-7622910abcde",
+  "file_name": ".secret.exe",
+  "overall_severity": "HIGH",
+  "composite_score": 75,
+  "matched_rules": [
+    "Hidden Executable File on Removable Media",
+    "Dangerous Extension Detection"
+  ],
+  "threat_types": [
+    "HIDDEN_EXECUTABLE",
+    "SUSPICIOUS_EXTENSION"
+  ]
+}
+```
+
+This design leverages `threat_scorer.calculate_composite_score()`, reducing security analyst alert fatigue while preserving all forensic evidence for deep-dive investigation.
