@@ -1,4 +1,5 @@
 export type ThreatSeverity = "CRITICAL" | "HIGH" | "MEDIUM" | "LOW" | "INFO";
+
 export type ThreatType =
   | "KNOWN_MALWARE"
   | "DOUBLE_EXTENSION"
@@ -7,23 +8,22 @@ export type ThreatType =
   | "SUSPICIOUS_EXTENSION"
   | "ANOMALOUS_FILE";
 
-export type ThreatStatus = "OPEN" | "INVESTIGATING" | "RESOLVED" | "FALSE_POSITIVE" | "QUARANTINED";
+export type ThreatStatus = "NEW" | "ACKNOWLEDGED" | "RESOLVED" | "OPEN" | "QUARANTINED" | "FALSE_POSITIVE";
 
 export interface ThreatRecord {
   id: string;
-  usb_event_id: string;
-  scan_result_id?: string;
-  device_id?: string;
-  file_name: string;
-  full_path: string;
-  sha256: string;
-  threat_name: string;
+  scan_result_id: string;
+  file_name?: string;
+  full_path?: string;
+  sha256?: string;
+  rule_name: string;
+  threat_name?: string;
   threat_type: ThreatType | string;
   severity: ThreatSeverity;
   description: string;
-  remediation?: string;
   status: ThreatStatus;
   detected_at: string;
+  remediation?: string;
 }
 
 export interface ThreatSeverityCount {

@@ -16,7 +16,7 @@ export const ThreatDashboard: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Filters & Pagination
+  // Filters & Pagination (Phase 7 Requirements: Severity, Status, Threat type, Search)
   const [selectedSeverity, setSelectedSeverity] = useState<string>("");
   const [selectedStatus, setSelectedStatus] = useState<string>("");
   const [selectedType, setSelectedType] = useState<string>("");
@@ -24,10 +24,9 @@ export const ThreatDashboard: React.FC = () => {
   const [skip, setSkip] = useState<number>(0);
   const limit = 20;
 
-  // Selected Threat for Forensic Detail Modal
+  // Selected Threat for Status Modal / Detail View
   const [selectedThreat, setSelectedThreat] = useState<ThreatRecord | null>(null);
-  const [newStatus, setNewStatus] = useState<ThreatStatus>("OPEN");
-  const [remediationNote, setRemediationNote] = useState<string>("");
+  const [newStatus, setNewStatus] = useState<ThreatStatus>("NEW");
   const [isUpdating, setIsUpdating] = useState<boolean>(false);
 
   const fetchThreatData = async () => {
@@ -70,14 +69,13 @@ export const ThreatDashboard: React.FC = () => {
   const handleOpenModal = (threat: ThreatRecord) => {
     setSelectedThreat(threat);
     setNewStatus(threat.status);
-    setRemediationNote(threat.remediation || "");
   };
 
   const handleUpdateStatus = async () => {
     if (!selectedThreat) return;
     setIsUpdating(true);
     try {
-      const updated = await updateThreatStatus(selectedThreat.id, newStatus, remediationNote);
+      const updated = await updateThreatStatus(selectedThreat.id, newStatus);
       setSelectedThreat(updated);
       await fetchThreatData();
     } catch (err: any) {
@@ -102,8 +100,10 @@ export const ThreatDashboard: React.FC = () => {
 
   const getStatusBadgeStyle = (status: ThreatStatus | string) => {
     switch (status.toUpperCase()) {
+      case "NEW":
       case "OPEN":
         return { background: "rgba(255, 0, 85, 0.15)", color: "#ff0055", border: "1px solid #ff0055" };
+      case "ACKNOWLEDGED":
       case "QUARANTINED":
         return { background: "rgba(255, 170, 0, 0.15)", color: "#ffaa00", border: "1px solid #ffaa00" };
       case "RESOLVED":
@@ -125,7 +125,7 @@ export const ThreatDashboard: React.FC = () => {
               SENTINEL<span style={{ color: "var(--text-main)" }}>X</span>
             </div>
             <span style={{ background: "rgba(255, 0, 85, 0.15)", color: "#ff0055", border: "1px solid #ff0055", padding: "0.2rem 0.6rem", borderRadius: "4px", fontSize: "0.75rem", fontFamily: "var(--font-mono)", fontWeight: "700" }}>
-              🛡️ THREAT ENGINE
+              🛡️ THREAT DASHBOARD
             </span>
           </div>
 
@@ -142,7 +142,7 @@ export const ThreatDashboard: React.FC = () => {
                 transition: "all 0.2s"
               }}
             >
-              Dashboard Overview
+              Overview
             </Link>
             <Link
               to="/threats"
@@ -187,24 +187,6 @@ export const ThreatDashboard: React.FC = () => {
             >
               USB Scan Results
             </Link>
-            {user?.role === "ADMIN" && (
-              <Link
-                to="/users"
-                style={{
-                  color: "#ffaa00",
-                  textDecoration: "none",
-                  fontSize: "0.9rem",
-                  fontWeight: "600",
-                  padding: "0.4rem 0.8rem",
-                  borderRadius: "6px",
-                  border: "1px solid rgba(255, 170, 0, 0.4)",
-                  background: "rgba(255, 170, 0, 0.1)",
-                  transition: "all 0.2s"
-                }}
-              >
-                User Management
-              </Link>
-            )}
           </nav>
         </div>
 
@@ -266,19 +248,20 @@ export const ThreatDashboard: React.FC = () => {
           </div>
 
           <div className="glass-panel" style={{ padding: "1.25rem", borderLeft: "4px solid #00ff9d" }}>
-            <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", textTransform: "uppercase" }}>Quarantined / Resolved</div>
+            <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", textTransform: "uppercase" }}>Resolved Threats</div>
             <div style={{ fontSize: "1.8rem", fontWeight: "800", color: "#00ff9d", marginTop: "0.4rem" }}>
-              {stats ? stats.quarantined + stats.resolved_threats : "-"}
+              {stats ? stats.resolved_threats : "-"}
             </div>
           </div>
         </div>
 
-        {/* Filter Control Bar */}
+        {/* Phase 7 Filter Control Bar: Severity, Status, Threat type, Search */}
         <div className="glass-panel" style={{ padding: "1.25rem", display: "flex", flexWrap: "wrap", gap: "1rem", alignItems: "center", justifyContent: "space-between" }}>
+          {/* Search Filter */}
           <form onSubmit={handleSearchSubmit} style={{ display: "flex", gap: "0.8rem", flex: 1, minWidth: "300px" }}>
             <input
               type="text"
-              placeholder="Search by file name, threat name, or SHA-256..."
+              placeholder="Search by file name, rule, or SHA-256..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               style={{
@@ -344,10 +327,9 @@ export const ThreatDashboard: React.FC = () => {
               }}
             >
               <option value="">All Statuses</option>
-              <option value="OPEN">OPEN</option>
-              <option value="QUARANTINED">QUARANTINED</option>
+              <option value="NEW">NEW</option>
+              <option value="ACKNOWLEDGED">ACKNOWLEDGED</option>
               <option value="RESOLVED">RESOLVED</option>
-              <option value="FALSE_POSITIVE">FALSE POSITIVE</option>
             </select>
 
             {/* Threat Type Filter */}
@@ -396,11 +378,11 @@ export const ThreatDashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* Forensic Threat Records Table */}
+        {/* Threat Records Table (Phase 7 Required Columns: File name, Threat type, Severity, Rule, Status, Detection time) */}
         <div className="glass-panel" style={{ padding: "1.5rem" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
             <h3 style={{ fontSize: "1.1rem", fontWeight: "700", color: "#ff0055", display: "flex", alignItems: "center", gap: "0.5rem" }}>
-              <span>🛡️</span> DETECTED THREAT RECORDS FORENSIC TABLE
+              <span>🛡️</span> DETECTED THREATS
             </h3>
             <span style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
               Showing {threats.length} threats
@@ -415,7 +397,7 @@ export const ThreatDashboard: React.FC = () => {
 
           {isLoading ? (
             <div style={{ textAlign: "center", padding: "3rem", color: "var(--accent-cyan)" }}>
-              Analyzing threat engine records...
+              Loading threat detection findings...
             </div>
           ) : threats.length === 0 ? (
             <div style={{ textAlign: "center", padding: "3rem", color: "var(--text-muted)" }}>
@@ -426,47 +408,62 @@ export const ThreatDashboard: React.FC = () => {
               <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: "0.85rem" }}>
                 <thead>
                   <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.1)", color: "var(--text-muted)" }}>
-                    <th style={{ padding: "0.8rem" }}>STATUS</th>
+                    <th style={{ padding: "0.8rem" }}>FILE NAME</th>
+                    <th style={{ padding: "0.8rem" }}>THREAT TYPE</th>
                     <th style={{ padding: "0.8rem" }}>SEVERITY</th>
-                    <th style={{ padding: "0.8rem" }}>THREAT NAME</th>
-                    <th style={{ padding: "0.8rem" }}>TYPE</th>
-                    <th style={{ padding: "0.8rem" }}>FILE NAME / PATH</th>
-                    <th style={{ padding: "0.8rem" }}>SHA-256 FINGERPRINT</th>
-                    <th style={{ padding: "0.8rem" }}>DETECTED AT</th>
+                    <th style={{ padding: "0.8rem" }}>RULE</th>
+                    <th style={{ padding: "0.8rem" }}>STATUS</th>
+                    <th style={{ padding: "0.8rem" }}>DETECTION TIME</th>
                     <th style={{ padding: "0.8rem", textAlign: "center" }}>ACTION</th>
                   </tr>
                 </thead>
                 <tbody>
                   {threats.map((threat) => (
                     <tr key={threat.id} style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                      {/* 1. File name */}
                       <td style={{ padding: "0.8rem" }}>
-                        <span style={{ padding: "0.2rem 0.5rem", borderRadius: "4px", fontSize: "0.75rem", fontFamily: "var(--font-mono)", fontWeight: "600", ...getStatusBadgeStyle(threat.status) }}>
-                          {threat.status}
-                        </span>
+                        <div style={{ fontWeight: "600", color: "var(--accent-cyan)" }}>
+                          {threat.file_name || "Unknown File"}
+                        </div>
+                        {threat.full_path && (
+                          <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}>
+                            {threat.full_path}
+                          </div>
+                        )}
                       </td>
-                      <td style={{ padding: "0.8rem" }}>
-                        <span className={`badge ${getSeverityBadgeClass(threat.severity)}`}>
-                          {threat.severity}
-                        </span>
-                      </td>
-                      <td style={{ padding: "0.8rem", fontWeight: "600", color: "#fff" }}>
-                        {threat.threat_name}
-                      </td>
+
+                      {/* 2. Threat type */}
                       <td style={{ padding: "0.8rem" }}>
                         <span style={{ background: "rgba(255,255,255,0.08)", padding: "0.2rem 0.5rem", borderRadius: "4px", fontSize: "0.75rem", fontFamily: "var(--font-mono)" }}>
                           {threat.threat_type}
                         </span>
                       </td>
+
+                      {/* 3. Severity */}
                       <td style={{ padding: "0.8rem" }}>
-                        <div style={{ fontWeight: "600", color: "var(--accent-cyan)" }}>{threat.file_name}</div>
-                        <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}>{threat.full_path}</div>
+                        <span className={`badge ${getSeverityBadgeClass(threat.severity)}`}>
+                          {threat.severity}
+                        </span>
                       </td>
-                      <td style={{ padding: "0.8rem", fontFamily: "var(--font-mono)", fontSize: "0.75rem", color: "var(--text-muted)" }}>
-                        {threat.sha256.substring(0, 16)}...
+
+                      {/* 4. Rule */}
+                      <td style={{ padding: "0.8rem", fontWeight: "600", color: "#fff" }}>
+                        {threat.rule_name || threat.threat_name}
                       </td>
+
+                      {/* 5. Status */}
+                      <td style={{ padding: "0.8rem" }}>
+                        <span style={{ padding: "0.2rem 0.5rem", borderRadius: "4px", fontSize: "0.75rem", fontFamily: "var(--font-mono)", fontWeight: "600", ...getStatusBadgeStyle(threat.status) }}>
+                          {threat.status}
+                        </span>
+                      </td>
+
+                      {/* 6. Detection time */}
                       <td style={{ padding: "0.8rem", fontSize: "0.75rem", color: "var(--text-muted)" }}>
                         {new Date(threat.detected_at).toLocaleString()}
                       </td>
+
+                      {/* Action */}
                       <td style={{ padding: "0.8rem", textAlign: "center" }}>
                         <button
                           onClick={() => handleOpenModal(threat)}
@@ -481,7 +478,7 @@ export const ThreatDashboard: React.FC = () => {
                             fontWeight: "600"
                           }}
                         >
-                          Inspect & Remediate
+                          Manage Status
                         </button>
                       </td>
                     </tr>
@@ -528,7 +525,7 @@ export const ThreatDashboard: React.FC = () => {
         </div>
       </main>
 
-      {/* Threat Forensic & Remediation Detail Modal */}
+      {/* Status Update Modal */}
       {selectedThreat && (
         <div style={{
           position: "fixed",
@@ -544,10 +541,10 @@ export const ThreatDashboard: React.FC = () => {
           zIndex: 1000,
           padding: "1rem"
         }}>
-          <div className="glass-panel" style={{ maxWidth: "700px", width: "100%", padding: "2rem", border: "1px solid var(--accent-cyan)", maxHeight: "90vh", overflowY: "auto" }}>
+          <div className="glass-panel" style={{ maxWidth: "600px", width: "100%", padding: "2rem", border: "1px solid var(--accent-cyan)", maxHeight: "90vh", overflowY: "auto" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
               <h3 style={{ fontSize: "1.2rem", fontWeight: "700", color: "#ff0055", display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                <span>🛡️</span> FORENSIC THREAT INSPECTOR
+                <span>🛡️</span> UPDATE THREAT INCIDENT STATUS
               </h3>
               <button
                 onClick={() => setSelectedThreat(null)}
@@ -559,8 +556,10 @@ export const ThreatDashboard: React.FC = () => {
 
             <div style={{ display: "grid", gap: "1rem", fontSize: "0.85rem" }}>
               <div style={{ background: "rgba(10, 13, 20, 0.8)", padding: "1rem", borderRadius: "6px" }}>
-                <div style={{ color: "var(--text-muted)", fontSize: "0.75rem", textTransform: "uppercase" }}>Threat Name & Classification</div>
-                <div style={{ fontSize: "1.1rem", fontWeight: "700", color: "#fff", marginTop: "0.2rem" }}>{selectedThreat.threat_name}</div>
+                <div style={{ color: "var(--text-muted)", fontSize: "0.75rem", textTransform: "uppercase" }}>Rule Name</div>
+                <div style={{ fontSize: "1.1rem", fontWeight: "700", color: "#fff", marginTop: "0.2rem" }}>
+                  {selectedThreat.rule_name || selectedThreat.threat_name}
+                </div>
                 <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.5rem" }}>
                   <span className={`badge ${getSeverityBadgeClass(selectedThreat.severity)}`}>{selectedThreat.severity}</span>
                   <span style={{ background: "rgba(255,255,255,0.08)", padding: "0.2rem 0.5rem", borderRadius: "4px", fontFamily: "var(--font-mono)" }}>
@@ -570,74 +569,41 @@ export const ThreatDashboard: React.FC = () => {
               </div>
 
               <div style={{ background: "rgba(10, 13, 20, 0.8)", padding: "1rem", borderRadius: "6px" }}>
-                <div style={{ color: "var(--text-muted)", fontSize: "0.75rem", textTransform: "uppercase" }}>File Forensic Target</div>
-                <div style={{ fontWeight: "600", color: "var(--accent-cyan)", marginTop: "0.2rem" }}>{selectedThreat.file_name}</div>
-                <div style={{ fontFamily: "var(--font-mono)", fontSize: "0.8rem", color: "var(--text-muted)", wordBreak: "break-all", marginTop: "0.2rem" }}>
-                  {selectedThreat.full_path}
+                <div style={{ color: "var(--text-muted)", fontSize: "0.75rem", textTransform: "uppercase" }}>File Name</div>
+                <div style={{ fontWeight: "600", color: "var(--accent-cyan)", marginTop: "0.2rem" }}>
+                  {selectedThreat.file_name || "Unknown File"}
                 </div>
+                {selectedThreat.full_path && (
+                  <div style={{ fontFamily: "var(--font-mono)", fontSize: "0.8rem", color: "var(--text-muted)", wordBreak: "break-all", marginTop: "0.2rem" }}>
+                    {selectedThreat.full_path}
+                  </div>
+                )}
               </div>
 
               <div style={{ background: "rgba(10, 13, 20, 0.8)", padding: "1rem", borderRadius: "6px" }}>
-                <div style={{ color: "var(--text-muted)", fontSize: "0.75rem", textTransform: "uppercase" }}>Cryptographic SHA-256 Fingerprint</div>
-                <div style={{ fontFamily: "var(--font-mono)", fontSize: "0.8rem", color: "var(--accent-cyan)", wordBreak: "break-all", marginTop: "0.2rem" }}>
-                  {selectedThreat.sha256}
-                </div>
-              </div>
-
-              <div style={{ background: "rgba(10, 13, 20, 0.8)", padding: "1rem", borderRadius: "6px" }}>
-                <div style={{ color: "var(--text-muted)", fontSize: "0.75rem", textTransform: "uppercase" }}>Detection Analysis & Description</div>
+                <div style={{ color: "var(--text-muted)", fontSize: "0.75rem", textTransform: "uppercase" }}>Description</div>
                 <div style={{ marginTop: "0.4rem", lineHeight: "1.5", color: "#ddd" }}>{selectedThreat.description}</div>
-              </div>
-
-              <div style={{ background: "rgba(10, 13, 20, 0.8)", padding: "1rem", borderRadius: "6px" }}>
-                <div style={{ color: "var(--text-muted)", fontSize: "0.75rem", textTransform: "uppercase" }}>Recommended Remediation Action</div>
-                <div style={{ marginTop: "0.4rem", color: "#00ff9d", fontWeight: "600" }}>
-                  {selectedThreat.remediation || "Isolate endpoint and inspect payload."}
-                </div>
               </div>
 
               {/* Status Update Form */}
               <div style={{ background: "rgba(255, 0, 85, 0.08)", border: "1px solid rgba(255, 0, 85, 0.3)", padding: "1rem", borderRadius: "6px" }}>
-                <div style={{ fontWeight: "700", color: "#ff0055", marginBottom: "0.8rem" }}>Update Threat Incident Status</div>
-                
-                <div style={{ display: "flex", gap: "1rem", marginBottom: "1rem" }}>
-                  <label style={{ display: "flex", flexDirection: "column", gap: "0.4rem", flex: 1 }}>
-                    <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>Incident Status</span>
-                    <select
-                      value={newStatus}
-                      onChange={(e) => setNewStatus(e.target.value as ThreatStatus)}
-                      style={{
-                        background: "rgba(10, 13, 20, 0.9)",
-                        border: "1px solid rgba(255,255,255,0.2)",
-                        color: "#fff",
-                        padding: "0.5rem",
-                        borderRadius: "4px"
-                      }}
-                    >
-                      <option value="OPEN">OPEN</option>
-                      <option value="QUARANTINED">QUARANTINED</option>
-                      <option value="RESOLVED">RESOLVED</option>
-                      <option value="FALSE_POSITIVE">FALSE POSITIVE</option>
-                    </select>
-                  </label>
-                </div>
-
                 <label style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
-                  <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>Remediation Notes / Analyst Comments</span>
-                  <textarea
-                    rows={3}
-                    value={remediationNote}
-                    onChange={(e) => setRemediationNote(e.target.value)}
-                    placeholder="Enter analyst resolution notes or quarantine action details..."
+                  <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>Incident Status</span>
+                  <select
+                    value={newStatus}
+                    onChange={(e) => setNewStatus(e.target.value as ThreatStatus)}
                     style={{
                       background: "rgba(10, 13, 20, 0.9)",
                       border: "1px solid rgba(255,255,255,0.2)",
                       color: "#fff",
                       padding: "0.5rem",
-                      borderRadius: "4px",
-                      fontSize: "0.85rem"
+                      borderRadius: "4px"
                     }}
-                  />
+                  >
+                    <option value="NEW">NEW</option>
+                    <option value="ACKNOWLEDGED">ACKNOWLEDGED</option>
+                    <option value="RESOLVED">RESOLVED</option>
+                  </select>
                 </label>
 
                 <button
@@ -655,7 +621,7 @@ export const ThreatDashboard: React.FC = () => {
                     fontWeight: "700"
                   }}
                 >
-                  {isUpdating ? "Saving Status..." : "Save Threat Resolution"}
+                  {isUpdating ? "Saving Status..." : "Save Status Change"}
                 </button>
               </div>
             </div>

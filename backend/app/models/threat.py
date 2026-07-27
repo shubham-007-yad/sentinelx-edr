@@ -72,5 +72,17 @@ class Threat(Base):
 
     scan_result = relationship("USBScanResult", back_populates="threats")
 
+    @property
+    def file_name(self) -> str:
+        return self.scan_result.file_name if self.scan_result else ""
+
+    @property
+    def full_path(self) -> str:
+        return self.scan_result.full_path if self.scan_result else ""
+
+    @property
+    def sha256(self) -> str:
+        return self.scan_result.sha256 if self.scan_result else ""
+
     def __repr__(self) -> str:
         return f"<Threat id={self.id} rule_name='{self.rule_name}' severity='{self.severity}'>"

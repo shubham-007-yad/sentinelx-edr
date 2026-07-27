@@ -25,6 +25,9 @@ class ThreatRecordUpdateStatus(BaseModel):
 class ThreatRecordOut(ThreatBase):
     id: UUID
     detected_at: datetime
+    file_name: Optional[str] = None
+    full_path: Optional[str] = None
+    sha256: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 

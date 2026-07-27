@@ -38,7 +38,7 @@ export const updateThreatStatus = async (
   status: ThreatStatus,
   remediation?: string
 ): Promise<ThreatRecord> => {
-  const response = await api.patch<ThreatRecord>(`/threats/${id}`, {
+  const response = await api.patch<ThreatRecord>(`/threats/${id}/status`, {
     status,
     remediation,
   });

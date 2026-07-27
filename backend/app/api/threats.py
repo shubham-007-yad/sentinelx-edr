@@ -84,7 +84,14 @@ def get_threat_detail(
     response_model=ThreatRecordOut,
     status_code=status.HTTP_200_OK,
     summary="Update threat status / remediation",
-    description="Updates the status (OPEN, RESOLVED, FALSE_POSITIVE, QUARANTINED) and optional remediation details."
+    description="Updates the status (NEW, ACKNOWLEDGED, RESOLVED) and optional remediation details."
+)
+@router.patch(
+    "/{id}/status",
+    response_model=ThreatRecordOut,
+    status_code=status.HTTP_200_OK,
+    summary="Update threat status",
+    description="Updates the status of a threat record."
 )
 def update_threat_status(
     id: UUID,
