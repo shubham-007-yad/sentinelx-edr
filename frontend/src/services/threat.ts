@@ -49,3 +49,13 @@ export const analyzeUsbEventScans = async (usbEventId: string): Promise<ThreatRe
   const response = await api.post<ThreatRecord[]>(`/threats/analyze/${usbEventId}`);
   return response.data;
 };
+
+export const threatService = {
+  getThreats,
+  getThreatSummary,
+  getThreatById,
+  updateThreatStatus,
+  analyzeUsbEventScans,
+};
+
+

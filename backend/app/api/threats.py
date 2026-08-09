@@ -2,7 +2,8 @@ from typing import List, Optional
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
-from app.api.deps import get_db
+from app.api.deps import get_db, get_current_analyst, get_current_viewer
+from app.models.user import User
 from app.schemas.threat import (
     ThreatRecordOut, ThreatRecordUpdateStatus, ThreatStatsOut
 )
@@ -28,7 +29,8 @@ def list_threats(
     usb_event_id: Optional[UUID] = Query(None, description="Filter by USB event ID"),
     device_id: Optional[UUID] = Query(None, description="Filter by device ID"),
     search: Optional[str] = Query(None, description="Search by file name, threat name, or SHA-256"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_viewer)
 ):
     """Retrieve list of threat records."""
     return threat_service.get_threat_records(
@@ -52,7 +54,8 @@ def list_threats(
     description="Returns aggregate metrics including severity distribution, status counts, and threat type counts."
 )
 def get_threat_summary(
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_viewer)
 ):
     """Retrieve threat statistics and summary metrics."""
     return threat_service.get_threat_stats(db=db)
@@ -62,12 +65,12 @@ def get_threat_summary(
     "/{id}",
     response_model=ThreatRecordOut,
     status_code=status.HTTP_200_OK,
-    summary="Get threat record detail",
-    description="Retrieves a single threat record by unique ID."
+    summary="Get threat record detail"
 )
 def get_threat_detail(
     id: UUID,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_viewer)
 ):
     """Retrieve single threat record by ID."""
     threat = threat_service.get_threat_record_by_id(db=db, threat_id=id)
@@ -83,20 +86,19 @@ def get_threat_detail(
     "/{id}",
     response_model=ThreatRecordOut,
     status_code=status.HTTP_200_OK,
-    summary="Update threat status / remediation",
-    description="Updates the status (NEW, ACKNOWLEDGED, RESOLVED) and optional remediation details."
+    summary="Update threat status / remediation"
 )
 @router.patch(
     "/{id}/status",
     response_model=ThreatRecordOut,
     status_code=status.HTTP_200_OK,
-    summary="Update threat status",
-    description="Updates the status of a threat record."
+    summary="Update threat status"
 )
 def update_threat_status(
     id: UUID,
     status_in: ThreatRecordUpdateStatus,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_analyst)
 ):
     """Update threat status and resolution details."""
     updated = threat_service.update_threat_status(db=db, threat_id=id, status_in=status_in)
@@ -112,12 +114,12 @@ def update_threat_status(
     "/analyze/{usb_event_id}",
     response_model=List[ThreatRecordOut],
     status_code=status.HTTP_200_OK,
-    summary="Run threat engine on USB event scan results",
-    description="Re-analyzes all scan results associated with a USB Event ID and creates any newly discovered threat records."
+    summary="Run threat engine on USB event scan results"
 )
 def analyze_usb_event_scans(
     usb_event_id: UUID,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_analyst)
 ):
     """Re-run threat analysis on scan results for a specific USB event."""
     scans = usb_scan_service.get_usb_scans(db=db, usb_event_id=usb_event_id, limit=1000)
@@ -127,6 +129,5 @@ def analyze_usb_event_scans(
             detail=f"No scan results found for USB event ID '{usb_event_id}'."
         )
     threat_service.analyze_and_record_threats(db=db, scan_results=scans)
-    # Return all threat records associated with this USB event
     all_threats = threat_service.get_threat_records(db=db, usb_event_id=usb_event_id, limit=1000)
     return all_threats

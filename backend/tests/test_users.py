@@ -51,10 +51,10 @@ def test_admin_user_crud_operations():
     assert user_data["role"] == "ANALYST"
 
     # 2. List Users as Admin
-    list_res = client.get("/api/v1/users", headers=admin_headers)
+    list_res = client.get("/api/v1/users?limit=1000", headers=admin_headers)
     assert list_res.status_code == 200
     users_list = list_res.json()
-    assert any(u["id"] == user_id for u in users_list)
+    assert any(str(u["id"]) == str(user_id) for u in users_list)
 
     # 3. Get Specific User as Admin
     get_res = client.get(f"/api/v1/users/{user_id}", headers=admin_headers)

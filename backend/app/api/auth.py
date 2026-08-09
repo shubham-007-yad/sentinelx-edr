@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_db, get_current_active_user
 from app.auth.jwt import create_access_token
 from app.core.config import settings
+from app.core.rate_limiter import rate_limit_auth, rate_limit_register
 from app.models.user import User
 from app.schemas.auth import LoginRequest
 from app.schemas.token import Token
@@ -18,6 +19,7 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 @router.post(
     "/register",
     status_code=status.HTTP_403_FORBIDDEN,
+    dependencies=[Depends(rate_limit_register)],
     summary="Register a new user (Disabled)",
     description="Public registration is disabled. System administrators must create user accounts via POST /api/v1/users."
 )
@@ -35,6 +37,7 @@ def register_user():
 @router.post(
     "/login",
     response_model=Token,
+    dependencies=[Depends(rate_limit_auth)],
     summary="User Login (OAuth2 Form & Swagger)",
     description="OAuth2 password form login endpoint for authenticating users and issuing JWT access tokens."
 )
@@ -75,6 +78,7 @@ def login_for_access_token(
 @router.post(
     "/login/json",
     response_model=Token,
+    dependencies=[Depends(rate_limit_auth)],
     summary="User Login (JSON Payload)",
     description="JSON login endpoint for single-page web applications (React SPA)."
 )

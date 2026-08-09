@@ -8,8 +8,14 @@ import {
 } from "../services/threat";
 import type { ThreatRecord, ThreatStats, ThreatStatus, ThreatSeverity } from "../types/threat";
 
+import { useWebSocket } from "../context/WebSocketContext";
+import { WebSocketStatusBadge } from "../components/WebSocketStatusBadge";
+
+import { NotificationCenter } from "../components/NotificationCenter";
+
 export const ThreatDashboard: React.FC = () => {
   const { user, logout } = useAuth();
+  const { liveAlerts } = useWebSocket();
 
   const [threats, setThreats] = useState<ThreatRecord[]>([]);
   const [stats, setStats] = useState<ThreatStats | null>(null);
@@ -59,6 +65,13 @@ export const ThreatDashboard: React.FC = () => {
   useEffect(() => {
     fetchThreatData();
   }, [skip, selectedSeverity, selectedStatus, selectedType]);
+
+  // Live WebSocket update without page refresh
+  useEffect(() => {
+    if (liveAlerts.length > 0) {
+      fetchThreatData();
+    }
+  }, [liveAlerts]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -118,27 +131,29 @@ export const ThreatDashboard: React.FC = () => {
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg-primary)", color: "var(--text-main)", padding: "2rem" }}>
       {/* Navigation Header */}
-      <header className="glass-panel" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "1rem 2rem", marginBottom: "2rem" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "2rem" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-            <div style={{ fontSize: "1.5rem", fontWeight: "800", color: "var(--accent-cyan)", letterSpacing: "1px" }}>
+      <header className="glass-panel" style={{ position: "relative", zIndex: 100, display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem", padding: "0.8rem 1.5rem", marginBottom: "2rem", flexWrap: "wrap" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "1.5rem", flexWrap: "wrap" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.8rem", flexShrink: 0 }}>
+            <div style={{ fontSize: "1.4rem", fontWeight: "800", color: "var(--accent-cyan)", letterSpacing: "1px" }}>
               SENTINEL<span style={{ color: "var(--text-main)" }}>X</span>
             </div>
-            <span style={{ background: "rgba(255, 0, 85, 0.15)", color: "#ff0055", border: "1px solid #ff0055", padding: "0.2rem 0.6rem", borderRadius: "4px", fontSize: "0.75rem", fontFamily: "var(--font-mono)", fontWeight: "700" }}>
+            <span style={{ background: "rgba(255, 0, 85, 0.15)", color: "#ff0055", border: "1px solid #ff0055", padding: "0.2rem 0.5rem", borderRadius: "4px", fontSize: "0.7rem", fontFamily: "var(--font-mono)", fontWeight: "700", whiteSpace: "nowrap" }}>
               🛡️ THREAT DASHBOARD
             </span>
+            <WebSocketStatusBadge />
           </div>
 
-          <nav style={{ display: "flex", gap: "1rem" }}>
+          <nav style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap" }}>
             <Link
               to="/dashboard"
               style={{
                 color: "var(--text-muted)",
                 textDecoration: "none",
-                fontSize: "0.9rem",
+                fontSize: "0.85rem",
                 fontWeight: "600",
-                padding: "0.4rem 0.8rem",
+                padding: "0.35rem 0.7rem",
                 borderRadius: "6px",
+                whiteSpace: "nowrap",
                 transition: "all 0.2s"
               }}
             >
@@ -151,23 +166,40 @@ export const ThreatDashboard: React.FC = () => {
                 background: "rgba(255, 0, 85, 0.1)",
                 border: "1px solid rgba(255, 0, 85, 0.4)",
                 textDecoration: "none",
-                fontSize: "0.9rem",
+                fontSize: "0.85rem",
                 fontWeight: "600",
-                padding: "0.4rem 0.8rem",
-                borderRadius: "6px"
+                padding: "0.35rem 0.7rem",
+                borderRadius: "6px",
+                whiteSpace: "nowrap"
               }}
             >
               Threat Dashboard
+            </Link>
+            <Link
+              to="/alerts"
+              style={{
+                color: "var(--accent-cyan)",
+                textDecoration: "none",
+                fontSize: "0.85rem",
+                fontWeight: "600",
+                padding: "0.35rem 0.7rem",
+                borderRadius: "6px",
+                whiteSpace: "nowrap",
+                transition: "all 0.2s"
+              }}
+            >
+              Alerts
             </Link>
             <Link
               to="/usb-activity"
               style={{
                 color: "var(--text-muted)",
                 textDecoration: "none",
-                fontSize: "0.9rem",
+                fontSize: "0.85rem",
                 fontWeight: "600",
-                padding: "0.4rem 0.8rem",
+                padding: "0.35rem 0.7rem",
                 borderRadius: "6px",
+                whiteSpace: "nowrap",
                 transition: "all 0.2s"
               }}
             >
@@ -178,10 +210,11 @@ export const ThreatDashboard: React.FC = () => {
               style={{
                 color: "var(--text-muted)",
                 textDecoration: "none",
-                fontSize: "0.9rem",
+                fontSize: "0.85rem",
                 fontWeight: "600",
-                padding: "0.4rem 0.8rem",
+                padding: "0.35rem 0.7rem",
                 borderRadius: "6px",
+                whiteSpace: "nowrap",
                 transition: "all 0.2s"
               }}
             >
@@ -190,10 +223,11 @@ export const ThreatDashboard: React.FC = () => {
           </nav>
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: "1.5rem" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "1.2rem", marginLeft: "auto", flexShrink: 0 }}>
+          <NotificationCenter />
           <div style={{ textAlign: "right" }}>
-            <div style={{ fontWeight: "600", fontSize: "0.95rem" }}>{user?.username}</div>
-            <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>{user?.email}</div>
+            <div style={{ fontWeight: "600", fontSize: "0.9rem", whiteSpace: "nowrap" }}>{user?.username}</div>
+            <div style={{ fontSize: "0.7rem", color: "var(--text-muted)", whiteSpace: "nowrap" }}>{user?.email}</div>
           </div>
           <span className={`badge badge-${user?.role?.toLowerCase()}`}>{user?.role}</span>
           <button

@@ -21,6 +21,28 @@ class ThreatType(str, enum.Enum):
     AUTORUN_SCRIPT = "AUTORUN_SCRIPT"
     SUSPICIOUS_EXTENSION = "SUSPICIOUS_EXTENSION"
     ANOMALOUS_FILE = "ANOMALOUS_FILE"
+    SUSPICIOUS_POWERSHELL = "SUSPICIOUS_POWERSHELL"
+    SUSPICIOUS_CMD = "SUSPICIOUS_CMD"
+    LOLBIN_ABUSE = "LOLBIN_ABUSE"
+    SUSPICIOUS_PROCESS_BEHAVIOR = "SUSPICIOUS_PROCESS_BEHAVIOR"
+    SUSPICIOUS_NETWORK_PORT = "SUSPICIOUS_NETWORK_PORT"
+    BLACK_LISTED_IP = "BLACK_LISTED_IP"
+    EXCESSIVE_CONNECTIONS = "EXCESSIVE_CONNECTIONS"
+    UNEXPECTED_INTERNET_ACCESS = "UNEXPECTED_INTERNET_ACCESS"
+    C2_BEACONING = "C2_BEACONING"
+    FIM_EXECUTABLE_IN_DOWNLOADS = "FIM_EXECUTABLE_IN_DOWNLOADS"
+    FIM_DOUBLE_EXTENSION_MASQUERADE = "FIM_DOUBLE_EXTENSION_MASQUERADE"
+    FIM_STARTUP_MODIFICATION = "FIM_STARTUP_MODIFICATION"
+    FIM_MASS_FILE_MODIFICATION = "FIM_MASS_FILE_MODIFICATION"
+    BRUTE_FORCE_AUTHENTICATION = "BRUTE_FORCE_AUTHENTICATION"
+    PRIVILEGE_ESCALATION = "PRIVILEGE_ESCALATION"
+    UNAUTHORIZED_ACCOUNT_CREATION = "UNAUTHORIZED_ACCOUNT_CREATION"
+    DEFENSE_EVASION_LOG_CLEARING = "DEFENSE_EVASION_LOG_CLEARING"
+    SUSPICIOUS_RDP_LOGON = "SUSPICIOUS_RDP_LOGON"
+    PERSISTENCE_SERVICE_CREATION = "PERSISTENCE_SERVICE_CREATION"
+    RANSOMWARE_BEHAVIOR = "RANSOMWARE_BEHAVIOR"
+    AGENT_HEALTH_ISSUE = "AGENT_HEALTH_ISSUE"
+
 
 
 class ThreatStatus(str, enum.Enum):
@@ -42,11 +64,11 @@ class Threat(Base):
     scan_result_id = Column(
         UUID(as_uuid=True),
         ForeignKey("usb_scan_results.id", ondelete="CASCADE"),
-        nullable=False,
+        nullable=True,
         index=True
     )
     threat_type = Column(
-        Enum(ThreatType, native_enum=True, name="threattype"),
+        Enum(ThreatType, native_enum=False, name="threattype"),
         nullable=False,
         index=True
     )
@@ -71,6 +93,7 @@ class Threat(Base):
     )
 
     scan_result = relationship("USBScanResult", back_populates="threats")
+    alerts = relationship("Alert", back_populates="threat", cascade="all, delete-orphan")
 
     @property
     def file_name(self) -> str:

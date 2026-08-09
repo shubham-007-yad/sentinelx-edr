@@ -1,5 +1,6 @@
 from typing import Optional, List
 from uuid import UUID
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 from app.models.user import User
 from app.schemas.user import UserCreate, UserUpdate
@@ -31,13 +32,21 @@ def create_user(db: Session, user_in: UserCreate) -> User:
     db.refresh(db_user)
     return db_user
 
+
 def authenticate_user(db: Session, username_or_email: str, password: str) -> Optional[User]:
+    if not username_or_email or not password:
+        return None
     target = username_or_email.strip()
-    if "@" in target:
-        user = get_user_by_email(db, target)
-    else:
-        user = get_user_by_username(db, target)
-        
+    target_lower = target.lower()
+
+    user = db.query(User).filter(
+        or_(
+            User.username == target,
+            User.username.ilike(target),
+            User.email == target_lower
+        )
+    ).first()
+
     if not user:
         return None
     if not verify_password(password, user.password_hash):

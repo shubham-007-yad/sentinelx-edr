@@ -27,7 +27,7 @@ def test_root_and_health():
 
     res_health = client.get("/health")
     assert res_health.status_code == 200
-    assert res_health.json()["status"] == "healthy"
+    assert res_health.json()["status"] == "UP"
 
 def test_public_registration_disabled():
     """Verify that public self-registration is disabled (HTTP 403 Forbidden)."""

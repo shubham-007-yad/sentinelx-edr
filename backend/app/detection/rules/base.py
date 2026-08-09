@@ -11,6 +11,10 @@ class RuleResult:
     severity: ThreatSeverity
     description: str
     score: int = 0
+    rule_id: Optional[str] = "RULE-0000"
+    rule_version: Optional[str] = "1.0.0"
+    mitre_attack: Optional[str] = "T1000"
+    confidence: float = 90.0
 
     def __post_init__(self):
         if self.score == 0 and self.severity:
@@ -23,6 +27,10 @@ class BaseRule(ABC):
     """Abstract base class for all detection rules in SentinelX EDR."""
 
     rule_name: str
+    rule_id: str = "RULE-0000"
+    rule_version: str = "1.0.0"
+    mitre_attack: str = "T1000"
+    confidence: float = 90.0
     threat_type: ThreatType
     severity: ThreatSeverity
 

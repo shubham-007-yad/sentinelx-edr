@@ -54,3 +54,5 @@ logs/
 .DS_Store
 Thumbs.db
 .device_id
+.quarantine/
+agent/.quarantine/

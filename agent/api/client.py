@@ -186,6 +186,29 @@ class APIClient:
         logger.error(f"Failed to upload USB scan results after {max_retries} attempts.")
         return None
 
+    def report_command_status(self, action_id: str, status: str, result: str) -> Optional[dict]:
+        """
+        Reports execution status of a response command back to backend Response Engine.
+        POST /responses/{action_id}/status
+        """
+        url = f"{self.backend_url}/responses/{action_id}/status"
+        payload = {
+            "status": status,
+            "result": result
+        }
+        logger.info(f"Reporting command execution status to backend: POST {url} -> {status}")
+        try:
+            response = self.session.post(url, json=payload, timeout=10)
+            if response.status_code == 200:
+                logger.info(f"Successfully reported command status for action {action_id}")
+                return response.json()
+            else:
+                logger.warning(f"Report status returned HTTP {response.status_code}: {response.text}")
+                return None
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Network error reporting command status: {e}")
+            return None
+
     def close(self):
         """Closes the underlying HTTP session."""
         self.session.close()

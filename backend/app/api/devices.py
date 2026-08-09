@@ -8,7 +8,15 @@ from app.schemas.device import (
     DeviceCreate, DeviceOut,
     DeviceHeartbeatRequest, DeviceHeartbeatResponse
 )
-from app.services import device_service
+from app.schemas.process import (
+    ProcessInfoOut, ProcessBatchIngestRequest,
+    ProcessEventDiffPayload, ProcessEventSummaryResponse
+)
+from app.schemas.network import (
+    NetworkConnectionOut, NetworkConnectionBatchIngestRequest,
+    NetworkEventDiffPayload, NetworkEventSummaryResponse
+)
+from app.services import device_service, process_service, network_service
 
 router = APIRouter(prefix="/devices", tags=["Devices"])
 
@@ -110,5 +118,209 @@ def device_heartbeat(
         "message": "Heartbeat recorded successfully",
         "device_id": device.id,
         "status": device.status,
-        "last_seen": device.last_seen
+        "health_status": device.health_status,
+        "last_seen": device.last_seen,
+        "last_heartbeat": device.last_heartbeat or device.last_seen
     }
+
+
+@router.post(
+    "/{id}/isolate",
+    response_model=DeviceOut,
+    status_code=status.HTTP_200_OK,
+    summary="Isolate managed endpoint device",
+    description="Marks endpoint as ISOLATED, preventing further USB events or scan jobs."
+)
+def isolate_device_endpoint(
+    id: UUID,
+    db: Session = Depends(get_db)
+):
+    device = device_service.isolate_device(db=db, device_id=id)
+    if not device:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Device with ID '{id}' was not found."
+        )
+    return device
+
+
+@router.post(
+    "/{id}/unisolate",
+    response_model=DeviceOut,
+    status_code=status.HTTP_200_OK,
+    summary="Un-isolate managed endpoint device",
+    description="Restores an isolated endpoint back to ONLINE status."
+)
+def unisolate_device_endpoint(
+    id: UUID,
+    db: Session = Depends(get_db)
+):
+    device = device_service.unisolate_device(db=db, device_id=id)
+    if not device:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Device with ID '{id}' was not found."
+        )
+    return device
+
+
+@router.get(
+    "/{id}/processes",
+    response_model=List[ProcessInfoOut],
+    status_code=status.HTTP_200_OK,
+    summary="Get device process inventory",
+    description="Retrieves active running process inventory snapshot for a specific managed device."
+)
+def get_device_processes_endpoint(
+    id: UUID,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=1000),
+    name: Optional[str] = Query(None, description="Filter process by executable/binary name"),
+    db: Session = Depends(get_db)
+):
+    device = device_service.get_device_by_id(db=db, device_id=id)
+    if not device:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Device with ID '{id}' was not found."
+        )
+    return process_service.get_processes_by_device(
+        db=db,
+        device_id=id,
+        skip=skip,
+        limit=limit,
+        name=name
+    )
+
+
+@router.post(
+    "/{id}/processes",
+    response_model=List[ProcessInfoOut],
+    status_code=status.HTTP_201_CREATED,
+    summary="Ingest process inventory snapshot for device",
+    description="Ingests running process inventory payload from agent for target device."
+)
+def ingest_device_processes_endpoint(
+    id: UUID,
+    payload: ProcessBatchIngestRequest,
+    db: Session = Depends(get_db)
+):
+    device = device_service.get_device_by_id(db=db, device_id=id)
+    if not device:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Device with ID '{id}' was not found."
+        )
+    return process_service.ingest_processes(
+        db=db,
+        device_id=id,
+        processes_in=payload.processes
+    )
+
+
+@router.post(
+    "/{id}/processes/events",
+    response_model=ProcessEventSummaryResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Ingest live process events for device",
+    description="Processes real-time process diff events (created, terminated, long-running)."
+)
+def ingest_device_process_events_endpoint(
+    id: UUID,
+    payload: ProcessEventDiffPayload,
+    db: Session = Depends(get_db)
+):
+    device = device_service.get_device_by_id(db=db, device_id=id)
+    if not device:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Device with ID '{id}' was not found."
+        )
+    return process_service.process_live_events(
+        db=db,
+        device_id=id,
+        events=payload
+    )
+
+
+@router.get(
+    "/{id}/network",
+    response_model=List[NetworkConnectionOut],
+    status_code=status.HTTP_200_OK,
+    summary="Get device network connections",
+    description="Retrieves active network connection telemetry for a specific managed device."
+)
+def get_device_network_connections_endpoint(
+    id: UUID,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=1000),
+    protocol: Optional[str] = Query(None, description="Filter by protocol (TCP/UDP)"),
+    state: Optional[str] = Query(None, description="Filter by socket state (ESTABLISHED, LISTEN, etc.)"),
+    db: Session = Depends(get_db)
+):
+    device = device_service.get_device_by_id(db=db, device_id=id)
+    if not device:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Device with ID '{id}' was not found."
+        )
+    return network_service.get_device_network_connections(
+        db=db,
+        device_id=id,
+        skip=skip,
+        limit=limit,
+        protocol=protocol,
+        state=state
+    )
+
+
+@router.post(
+    "/{id}/network",
+    response_model=List[NetworkConnectionOut],
+    status_code=status.HTTP_201_CREATED,
+    summary="Ingest network connections for device",
+    description="Ingests network connection inventory snapshot payload from agent for target device."
+)
+def ingest_device_network_connections_endpoint(
+    id: UUID,
+    payload: NetworkConnectionBatchIngestRequest,
+    db: Session = Depends(get_db)
+):
+    device = device_service.get_device_by_id(db=db, device_id=id)
+    if not device:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Device with ID '{id}' was not found."
+        )
+    return network_service.ingest_network_connections(
+        db=db,
+        device_id=id,
+        connections_in=payload.connections
+    )
+
+
+@router.post(
+    "/{id}/network/events",
+    response_model=NetworkEventSummaryResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Ingest live network diff events for device",
+    description="Processes real-time connection diff events (connected, disconnected, state_changed, long_running)."
+)
+def ingest_device_network_events_diff_endpoint(
+    id: UUID,
+    payload: NetworkEventDiffPayload,
+    db: Session = Depends(get_db)
+):
+    device = device_service.get_device_by_id(db=db, device_id=id)
+    if not device:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Device with ID '{id}' was not found."
+        )
+    return network_service.process_live_network_events(
+        db=db,
+        device_id=id,
+        events=payload
+    )
+
+

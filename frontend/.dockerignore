@@ -1,0 +1,9 @@
+node_modules
+dist
+build
+.npm
+.yarn
+.env
+.env.*
+!.env.example
+*.log

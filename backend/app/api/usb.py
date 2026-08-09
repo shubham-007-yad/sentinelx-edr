@@ -2,15 +2,86 @@ from typing import List, Optional, Union
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
-from app.api.deps import get_db
+from app.api.deps import get_db, get_current_admin, get_current_viewer
+from app.models.user import User
+from app.models.device import DeviceStatus
 from app.models.usb_event import USBEventType
 from app.schemas.usb_event import USBEventCreate, USBEventOut
 from app.schemas.usb_scan import (
     USBScanResultCreate, USBScanBatchCreate, USBScanResultOut
 )
+from app.schemas.security_policy import USBPolicyConfigSchema, SecurityPolicyCreate
 from app.services import usb_event_service, device_service, usb_scan_service
+from app.services.policy_service import PolicyService, DEFAULT_USB_CONFIG
+from app.models.security_policy import PolicyCategory
 
 router = APIRouter(prefix="/usb", tags=["USB Events & Scans"])
+
+
+# ==================== USB SECURITY POLICY ====================
+
+@router.get(
+    "/policy",
+    response_model=USBPolicyConfigSchema,
+    status_code=status.HTTP_200_OK,
+    summary="Get active USB Security Policy",
+    description="Retrieves the highest priority active USB security policy configuration enforced across endpoints."
+)
+def get_usb_security_policy(db: Session = Depends(get_db)):
+    """
+    Get current active USB policy settings.
+    """
+    config = PolicyService.get_active_usb_policy(db=db)
+    return config
+
+
+@router.put(
+    "/policy",
+    response_model=USBPolicyConfigSchema,
+    status_code=status.HTTP_200_OK,
+    summary="Update USB Security Policy",
+    description="Updates or sets the active central USB security policy configuration."
+)
+def update_usb_security_policy(
+    policy_in: USBPolicyConfigSchema,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin)
+):
+    """
+    Update active USB security policy settings.
+    """
+    active_policies = PolicyService.get_policies(db=db, category=PolicyCategory.USB, enabled_only=True)
+    if active_policies:
+        active_policy = active_policies[0]
+        updated = PolicyService.update_policy(
+            db=db,
+            policy_id=str(active_policy.id),
+            payload=SecurityPolicyCreate(
+                policy_name=active_policy.policy_name,
+                category=PolicyCategory.USB,
+                version=active_policy.version,
+                enabled=True,
+                priority=active_policy.priority,
+                configuration=policy_in.model_dump(),
+                created_by="Admin"
+            )
+        )
+        return updated.configuration
+    else:
+        created = PolicyService.create_policy(
+            db=db,
+            payload=SecurityPolicyCreate(
+                policy_name="Central USB Security Policy",
+                category=PolicyCategory.USB,
+                version=1,
+                enabled=True,
+                priority=100,
+                configuration=policy_in.model_dump(),
+                created_by="Admin"
+            )
+        )
+        return created.configuration
+
 
 
 # ==================== USB EVENTS ====================
@@ -34,6 +105,12 @@ def create_usb_event(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Device with ID '{event_in.device_id}' was not found."
+        )
+
+    if device.status == DeviceStatus.ISOLATED:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Endpoint device '{device.hostname}' is currently ISOLATED. New USB events are blocked."
         )
 
     try:
@@ -130,6 +207,12 @@ def create_usb_scans(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"USB Event with ID '{sample_event_id}' was not found."
+        )
+
+    if usb_event.device and usb_event.device.status == DeviceStatus.ISOLATED:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Endpoint device '{usb_event.device.hostname}' is currently ISOLATED. Scan jobs are blocked."
         )
 
     try:

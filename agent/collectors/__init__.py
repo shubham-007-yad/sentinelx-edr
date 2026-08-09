@@ -21,6 +21,24 @@ from file_hasher import (
     FileHasher,
     calculate_sha256
 )
+from collectors.process_collector import (
+    ProcessCollector,
+    collect_process_inventory
+)
+from collectors.live_process_monitor import ProcessMonitor
+from collectors.network_collector import (
+    NetworkCollector,
+    collect_network_connections,
+    NetworkMonitor
+)
+from collectors.file_watcher import (
+    RealTimeFileMonitor,
+    get_default_monitored_directories
+)
+from collectors.event_log_collector import (
+    EventLogCollector,
+    collect_security_events
+)
 
 __all__ = [
     "SystemInfoCollector",
@@ -36,4 +54,15 @@ __all__ = [
     "get_file_metadata_json",
     "FileHasher",
     "calculate_sha256",
+    "ProcessCollector",
+    "collect_process_inventory",
+    "ProcessMonitor",
+    "NetworkCollector",
+    "collect_network_connections",
+    "NetworkMonitor",
+    "RealTimeFileMonitor",
+    "get_default_monitored_directories",
+    "EventLogCollector",
+    "collect_security_events",
 ]
+

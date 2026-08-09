@@ -4,6 +4,9 @@ import { useAuth } from "../context/AuthContext";
 import { getUsbScans, getUsbEvents } from "../services/usb";
 import type { USBScanResult, USBEvent } from "../types/usb";
 
+import { WebSocketStatusBadge } from "../components/WebSocketStatusBadge";
+import { NotificationCenter } from "../components/NotificationCenter";
+
 export const USBScanResults: React.FC = () => {
   const { user, logout } = useAuth();
 
@@ -95,8 +98,8 @@ export const USBScanResults: React.FC = () => {
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg-primary)", color: "var(--text-main)", padding: "2rem" }}>
       {/* Top Header Navigation */}
-      <header className="glass-panel" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "1rem 2rem", marginBottom: "2rem" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "2rem" }}>
+      <header className="glass-panel" style={{ position: "relative", zIndex: 100, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem", padding: "1rem 2rem", marginBottom: "2rem" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "2rem", flexWrap: "wrap" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
             <div style={{ fontSize: "1.5rem", fontWeight: "800", color: "var(--accent-cyan)", letterSpacing: "1px" }}>
               SENTINEL<span style={{ color: "var(--text-main)" }}>X</span>
@@ -104,9 +107,10 @@ export const USBScanResults: React.FC = () => {
             <span style={{ background: "rgba(0, 240, 255, 0.1)", color: "var(--accent-cyan)", padding: "0.2rem 0.6rem", borderRadius: "4px", fontSize: "0.75rem", fontFamily: "var(--font-mono)" }}>
               EDR CONSOLE v1.0.0
             </span>
+            <WebSocketStatusBadge />
           </div>
 
-          <nav style={{ display: "flex", gap: "1rem" }}>
+          <nav style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
             <Link
               to="/dashboard"
               style={{
@@ -136,6 +140,20 @@ export const USBScanResults: React.FC = () => {
               }}
             >
               Threat Dashboard
+            </Link>
+            <Link
+              to="/alerts"
+              style={{
+                color: "var(--accent-cyan)",
+                textDecoration: "none",
+                fontSize: "0.9rem",
+                fontWeight: "600",
+                padding: "0.4rem 0.8rem",
+                borderRadius: "6px",
+                transition: "all 0.2s"
+              }}
+            >
+              Alerts
             </Link>
             <Link
               to="/usb-activity"
@@ -170,6 +188,7 @@ export const USBScanResults: React.FC = () => {
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: "1.5rem" }}>
+          <NotificationCenter />
           <div style={{ textAlign: "right" }}>
             <div style={{ fontWeight: "600", fontSize: "0.95rem" }}>{user?.username}</div>
             <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>{user?.email}</div>

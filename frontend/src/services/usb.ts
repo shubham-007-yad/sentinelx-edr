@@ -47,3 +47,14 @@ export const getDevices = async (): Promise<Device[]> => {
   const response = await api.get<Device[]>("/devices");
   return response.data;
 };
+
+export const isolateDevice = async (id: string): Promise<Device> => {
+  const response = await api.post<Device>(`/devices/${id}/isolate`);
+  return response.data;
+};
+
+export const unisolateDevice = async (id: string): Promise<Device> => {
+  const response = await api.post<Device>(`/devices/${id}/unisolate`);
+  return response.data;
+};
+

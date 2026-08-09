@@ -56,6 +56,8 @@ def analyze_and_record_threats(db: Session, scan_results: List[USBScanResult]) -
             db.commit()
             for t in new_threats:
                 db.refresh(t)
+            from app.services.alert_service import create_alerts_for_threats
+            create_alerts_for_threats(db, new_threats)
         except Exception:
             db.rollback()
             raise
@@ -77,6 +79,8 @@ def create_threat_record(db: Session, threat_in: ThreatRecordCreate) -> Threat:
         db.add(db_threat)
         db.commit()
         db.refresh(db_threat)
+        from app.services.alert_service import create_alert_from_threat
+        create_alert_from_threat(db, db_threat)
         return db_threat
     except Exception:
         db.rollback()

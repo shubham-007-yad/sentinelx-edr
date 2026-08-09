@@ -2,24 +2,29 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
+import { WebSocketStatusBadge } from "../components/WebSocketStatusBadge";
+
+import { NotificationCenter } from "../components/NotificationCenter";
+
 export const Dashboard: React.FC = () => {
   const { user, logout, token } = useAuth();
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg-primary)", color: "var(--text-main)", padding: "2rem" }}>
       {/* Top Header Navigation */}
-      <header className="glass-panel" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "1rem 2rem", marginBottom: "2rem" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "2rem" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-            <div style={{ fontSize: "1.5rem", fontWeight: "800", color: "var(--accent-cyan)", letterSpacing: "1px" }}>
+      <header className="glass-panel" style={{ position: "relative", zIndex: 100, display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem", padding: "0.8rem 1.5rem", marginBottom: "2rem", flexWrap: "wrap" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "1.5rem", flexWrap: "wrap" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.8rem", flexShrink: 0 }}>
+            <div style={{ fontSize: "1.4rem", fontWeight: "800", color: "var(--accent-cyan)", letterSpacing: "1px" }}>
               SENTINEL<span style={{ color: "var(--text-main)" }}>X</span>
             </div>
-            <span style={{ background: "rgba(0, 240, 255, 0.1)", color: "var(--accent-cyan)", padding: "0.2rem 0.6rem", borderRadius: "4px", fontSize: "0.75rem", fontFamily: "var(--font-mono)" }}>
+            <span style={{ background: "rgba(0, 240, 255, 0.1)", color: "var(--accent-cyan)", padding: "0.2rem 0.5rem", borderRadius: "4px", fontSize: "0.7rem", fontFamily: "var(--font-mono)", whiteSpace: "nowrap" }}>
               EDR CONSOLE v1.0.0
             </span>
+            <WebSocketStatusBadge />
           </div>
 
-          <nav style={{ display: "flex", gap: "1rem" }}>
+          <nav style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap" }}>
             <Link
               to="/dashboard"
               style={{
@@ -27,10 +32,11 @@ export const Dashboard: React.FC = () => {
                 background: "rgba(0, 240, 255, 0.1)",
                 border: "1px solid rgba(0, 240, 255, 0.3)",
                 textDecoration: "none",
-                fontSize: "0.9rem",
+                fontSize: "0.85rem",
                 fontWeight: "600",
-                padding: "0.4rem 0.8rem",
+                padding: "0.35rem 0.7rem",
                 borderRadius: "6px",
+                whiteSpace: "nowrap",
               }}
             >
               Dashboard Overview
@@ -42,24 +48,58 @@ export const Dashboard: React.FC = () => {
                 background: "rgba(255, 0, 85, 0.1)",
                 border: "1px solid rgba(255, 0, 85, 0.3)",
                 textDecoration: "none",
-                fontSize: "0.9rem",
+                fontSize: "0.85rem",
                 fontWeight: "600",
-                padding: "0.4rem 0.8rem",
+                padding: "0.35rem 0.7rem",
                 borderRadius: "6px",
+                whiteSpace: "nowrap",
                 transition: "all 0.2s"
               }}
             >
               Threat Dashboard
             </Link>
             <Link
+              to="/alerts"
+              style={{
+                color: "var(--accent-cyan)",
+                textDecoration: "none",
+                fontSize: "0.85rem",
+                fontWeight: "600",
+                padding: "0.35rem 0.7rem",
+                borderRadius: "6px",
+                whiteSpace: "nowrap",
+                transition: "all 0.2s"
+              }}
+            >
+              Alerts
+            </Link>
+            <Link
+              to="/ransomware"
+              style={{
+                color: "#ff0055",
+                background: "rgba(255, 0, 85, 0.1)",
+                border: "1px solid rgba(255, 0, 85, 0.3)",
+                textDecoration: "none",
+                fontSize: "0.85rem",
+                fontWeight: "600",
+                padding: "0.35rem 0.7rem",
+                borderRadius: "6px",
+                whiteSpace: "nowrap",
+                transition: "all 0.2s"
+              }}
+            >
+              Ransomware Detection
+            </Link>
+            <Link
               to="/usb-activity"
               style={{
                 color: "var(--text-muted)",
                 textDecoration: "none",
-                fontSize: "0.9rem",
+                fontSize: "0.85rem",
                 fontWeight: "600",
-                padding: "0.4rem 0.8rem",
+                padding: "0.35rem 0.7rem",
                 borderRadius: "6px",
+                whiteSpace: "nowrap",
                 transition: "all 0.2s"
               }}
             >
@@ -70,10 +110,11 @@ export const Dashboard: React.FC = () => {
               style={{
                 color: "var(--text-muted)",
                 textDecoration: "none",
-                fontSize: "0.9rem",
+                fontSize: "0.85rem",
                 fontWeight: "600",
-                padding: "0.4rem 0.8rem",
+                padding: "0.35rem 0.7rem",
                 borderRadius: "6px",
+                whiteSpace: "nowrap",
                 transition: "all 0.2s"
               }}
             >
@@ -85,12 +126,13 @@ export const Dashboard: React.FC = () => {
                 style={{
                   color: "#ffaa00",
                   textDecoration: "none",
-                  fontSize: "0.9rem",
+                  fontSize: "0.85rem",
                   fontWeight: "600",
-                  padding: "0.4rem 0.8rem",
+                  padding: "0.35rem 0.7rem",
                   borderRadius: "6px",
                   border: "1px solid rgba(255, 170, 0, 0.4)",
                   background: "rgba(255, 170, 0, 0.1)",
+                  whiteSpace: "nowrap",
                   transition: "all 0.2s"
                 }}
               >
@@ -100,10 +142,11 @@ export const Dashboard: React.FC = () => {
           </nav>
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: "1.5rem" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "1.2rem", marginLeft: "auto", flexShrink: 0 }}>
+          <NotificationCenter />
           <div style={{ textAlign: "right" }}>
-            <div style={{ fontWeight: "600", fontSize: "0.95rem" }}>{user?.username}</div>
-            <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>{user?.email}</div>
+            <div style={{ fontWeight: "600", fontSize: "0.9rem", whiteSpace: "nowrap" }}>{user?.username}</div>
+            <div style={{ fontSize: "0.7rem", color: "var(--text-muted)", whiteSpace: "nowrap" }}>{user?.email}</div>
           </div>
 
           <span className={`badge badge-${user?.role?.toLowerCase()}`}>

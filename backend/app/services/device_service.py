@@ -52,12 +52,22 @@ def register_device(db: Session, device_in: DeviceCreate) -> Device:
             existing_device.os_version = device_in.os_version
         if device_in.agent_version:
             existing_device.agent_version = device_in.agent_version
+        if device_in.applied_policy_version is not None:
+            existing_device.applied_policy_version = device_in.applied_policy_version
+        elif device_in.policy_version is not None:
+            existing_device.applied_policy_version = device_in.policy_version
+        if device_in.health_status:
+            existing_device.health_status = device_in.health_status
+        if device_in.last_command_status:
+            existing_device.last_command_status = device_in.last_command_status
         if device_in.user_id:
             existing_device.user_id = device_in.user_id
 
-        existing_device.status = DeviceStatus.ONLINE
+        existing_device.status = device_in.status or DeviceStatus.ONLINE
         existing_device.is_active = True
         existing_device.last_seen = now
+        existing_device.last_checkin = now
+        existing_device.last_heartbeat = now
         existing_device.updated_at = now
 
         db.add(existing_device)
@@ -72,9 +82,14 @@ def register_device(db: Session, device_in: DeviceCreate) -> Device:
         os_type=device_in.os_type or OSType.LINUX,
         os_version=device_in.os_version,
         agent_version=device_in.agent_version,
-        status=DeviceStatus.ONLINE,
+        applied_policy_version=device_in.applied_policy_version or device_in.policy_version,
+        status=device_in.status or DeviceStatus.ONLINE,
+        health_status=device_in.health_status or HealthStatus.HEALTHY,
+        last_command_status=device_in.last_command_status or CommandStatus.NONE,
         is_active=True,
         last_seen=now,
+        last_checkin=now,
+        last_heartbeat=now,
         user_id=device_in.user_id
     )
     db.add(db_device)
@@ -85,7 +100,8 @@ def register_device(db: Session, device_in: DeviceCreate) -> Device:
 
 def record_heartbeat(db: Session, heartbeat_in: DeviceHeartbeatRequest) -> Optional[Device]:
     """
-    Updates last_seen timestamp, status to ONLINE, and optional ip_address for a device.
+    Updates last_seen and last_heartbeat timestamps, agent version, policy version, and health status for a device.
+    Preserves DeviceStatus.ISOLATED if endpoint is isolated.
     """
     device = get_device_by_id(db, heartbeat_in.device_id)
     if not device:
@@ -93,7 +109,27 @@ def record_heartbeat(db: Session, heartbeat_in: DeviceHeartbeatRequest) -> Optio
 
     now = datetime.now(timezone.utc)
     device.last_seen = now
-    device.status = heartbeat_in.status or DeviceStatus.ONLINE
+    device.last_heartbeat = now
+    device.last_checkin = now
+    
+    if heartbeat_in.agent_version:
+        device.agent_version = heartbeat_in.agent_version
+    if heartbeat_in.applied_policy_version is not None:
+        device.applied_policy_version = heartbeat_in.applied_policy_version
+    elif heartbeat_in.policy_version is not None:
+        device.applied_policy_version = heartbeat_in.policy_version
+
+    if heartbeat_in.health_status is not None:
+        device.health_status = heartbeat_in.health_status
+    if heartbeat_in.last_command_status is not None:
+        device.last_command_status = heartbeat_in.last_command_status
+
+    # Preserve ISOLATED status if endpoint is isolated
+    if device.status == DeviceStatus.ISOLATED and (not heartbeat_in.status or heartbeat_in.status == DeviceStatus.ONLINE):
+        device.status = DeviceStatus.ISOLATED
+    else:
+        device.status = heartbeat_in.status or DeviceStatus.ONLINE
+
     device.is_active = True
     device.updated_at = now
 
@@ -103,6 +139,60 @@ def record_heartbeat(db: Session, heartbeat_in: DeviceHeartbeatRequest) -> Optio
     db.add(device)
     db.commit()
     db.refresh(device)
+    return device
+
+
+def isolate_device(db: Session, device_id: UUID) -> Optional[Device]:
+    """
+    Marks an endpoint device as ISOLATED, preventing further USB event uploads or scan jobs.
+    """
+    device = get_device_by_id(db, device_id)
+    if not device:
+        return None
+
+    device.status = DeviceStatus.ISOLATED
+    device.updated_at = datetime.now(timezone.utc)
+    db.add(device)
+    db.commit()
+    db.refresh(device)
+
+    from app.core.websocket_manager import websocket_manager
+    websocket_manager.broadcast_sync({
+        "event": "DEVICE_ISOLATION_CHANGED",
+        "data": {
+            "device_id": str(device.id),
+            "hostname": device.hostname,
+            "status": device.status.value,
+            "timestamp": device.updated_at.isoformat()
+        }
+    })
+    return device
+
+
+def unisolate_device(db: Session, device_id: UUID) -> Optional[Device]:
+    """
+    Restores an isolated endpoint device back to ONLINE status.
+    """
+    device = get_device_by_id(db, device_id)
+    if not device:
+        return None
+
+    device.status = DeviceStatus.ONLINE
+    device.updated_at = datetime.now(timezone.utc)
+    db.add(device)
+    db.commit()
+    db.refresh(device)
+
+    from app.core.websocket_manager import websocket_manager
+    websocket_manager.broadcast_sync({
+        "event": "DEVICE_ISOLATION_CHANGED",
+        "data": {
+            "device_id": str(device.id),
+            "hostname": device.hostname,
+            "status": device.status.value,
+            "timestamp": device.updated_at.isoformat()
+        }
+    })
     return device
 
 
