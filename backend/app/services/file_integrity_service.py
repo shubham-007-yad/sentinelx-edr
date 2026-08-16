@@ -1,4 +1,8 @@
+import os
+import logging
 from datetime import datetime, timezone
+
+logger = logging.getLogger(__name__)
 from typing import List, Optional, Dict, Any
 from uuid import UUID
 from sqlalchemy.orm import Session
@@ -177,6 +181,55 @@ def verify_file_integrity_change(
                 status = "UNCHANGED"
                 is_changed = False
                 details = f"File event received; content matches baseline (SHA-256: {baseline.sha256[:8]}...)"
+
+    # Evaluate FIM detection rules and trigger DetectionPipeline & WebSocket Alerts
+    try:
+        from app.detection.rules.fim_rules import (
+            FIMExecutableInDownloadsRule,
+            FIMDoubleExtensionRule,
+            FIMStartupModificationRule
+        )
+        from app.detection.pipeline import detection_pipeline
+        from app.detection.event import DetectionEvent
+
+        fim_rules = [
+            FIMExecutableInDownloadsRule(),
+            FIMDoubleExtensionRule(),
+            FIMStartupModificationRule()
+        ]
+
+        file_name = event.file_name or (os.path.basename(event.file_path) if event.file_path else "")
+        ext = getattr(event, "extension", None) or (os.path.splitext(file_name)[1] if file_name else "")
+
+        for rule in fim_rules:
+            res = rule.evaluate(
+                file_name=file_name,
+                full_path=event.file_path,
+                extension=ext,
+                file_size=event.size,
+                sha256=event.sha256 or "",
+                is_executable=event.is_executable,
+                event_type=event.event_type
+            )
+            if res:
+                sev_str = res.severity.value if hasattr(res.severity, "value") else str(res.severity)
+                type_str = res.threat_type.value if hasattr(res.threat_type, "value") else str(res.threat_type)
+
+                det_event = DetectionEvent(
+                    source_subsystem="FIM",
+                    rule_id=getattr(res, "rule_id", "RULE-FIM-001"),
+                    rule_name=res.rule_name,
+                    threat_type=type_str,
+                    severity=sev_str,
+                    description=res.description,
+                    device_id=device_id,
+                    file_path=event.file_path,
+                    file_name=file_name,
+                    file_hash=event.sha256
+                )
+                detection_pipeline.process_event(db, det_event)
+    except Exception as fim_err:
+        logger.warning(f"[FIM] Error evaluating FIM rules: {fim_err}")
 
     return FileIntegrityEventOut(
         device_id=device_id,

@@ -10,9 +10,9 @@ const SingleToastCard: React.FC<{
   useEffect(() => {
     const timer = setTimeout(() => {
       onDismiss();
-    }, 6000); // 6 seconds auto-dismiss
+    }, 7000); // Exactly 7 seconds auto-dismiss
     return () => clearTimeout(timer);
-  }, [onDismiss]);
+  }, []);
 
   const getSeverityIcon = (severity?: string) => {
     switch ((severity || "").toUpperCase()) {
@@ -138,9 +138,9 @@ export const LiveAlertToast: React.FC = () => {
       >
         {activeToasts.slice(0, 5).map((toast: LiveAlertPayload, index: number) => (
           <SingleToastCard
-            key={index}
+            key={toast.id || index}
             toast={toast}
-            onDismiss={() => dismissToast(index)}
+            onDismiss={() => dismissToast(toast.id || index)}
             onOpenDetails={(t) => setSelectedToast(t)}
           />
         ))}

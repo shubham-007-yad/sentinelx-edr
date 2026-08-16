@@ -18,6 +18,8 @@ from agent.collectors.network_collector import NetworkMonitor
 from agent.integrity_engine import AgentIntegrityEngine
 
 
+from app.auth.jwt import create_access_token
+
 client = TestClient(app)
 
 
@@ -233,13 +235,16 @@ def test_phase8_dashboard_api_endpoints():
     finally:
         db.close()
 
+    token = create_access_token(subject="admin", role="ADMIN")
+    headers = {"Authorization": f"Bearer {token}"}
+
     # GET /api/v1/policies/history
-    resp_hist = client.get("/api/v1/policies/history")
+    resp_hist = client.get("/api/v1/policies/history", headers=headers)
     assert resp_hist.status_code == 200
     assert isinstance(resp_hist.json(), list)
 
     # GET /api/v1/policies/latest
-    resp_latest = client.get("/api/v1/policies/latest")
+    resp_latest = client.get("/api/v1/policies/latest", headers=headers)
     assert resp_latest.status_code == 200
     data = resp_latest.json()
     assert "version" in data

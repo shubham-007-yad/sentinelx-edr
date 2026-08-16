@@ -122,8 +122,9 @@ class DetectionPipeline:
                 logger.warning(f"[DetectionPipeline] Auto-remediation skipped or already running: {resp_err}")
 
         # ----------------------------------------------------
-        # Stage 5: WebSocket Broadcast
+        # Stage 5: WebSocket Broadcast (NEW_ALERT & DETECTION_EVENT)
         # ----------------------------------------------------
+        from datetime import datetime, timezone
         event_dict = event.to_dict()
         event_dict.update({
             "threat_id": str(threat.id),
@@ -137,8 +138,24 @@ class DetectionPipeline:
             "data": event_dict
         }
 
+        created_time = alert.created_at.isoformat() if hasattr(alert, "created_at") and alert.created_at else datetime.now(timezone.utc).isoformat()
+        alert_payload = {
+            "id": str(alert.id),
+            "threat_id": str(threat.id),
+            "device_id": str(alert.device_id),
+            "device": str(event.device_id),
+            "file": event.file_name or event.process_name or event.file_path or "Security Event",
+            "title": alert.title,
+            "message": alert.message,
+            "severity": alert.severity.value if hasattr(alert.severity, "value") else str(alert.severity),
+            "status": alert.status.value if hasattr(alert.status, "value") else str(alert.status),
+            "created_at": created_time,
+            "time": created_time,
+        }
+
         try:
             websocket_manager.broadcast_sync(broadcast_payload)
+            websocket_manager.broadcast_alert_sync(alert_payload)
         except Exception as ws_err:
             logger.warning(f"[DetectionPipeline] WebSocket broadcast failed: {ws_err}")
 

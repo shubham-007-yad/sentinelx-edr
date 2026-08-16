@@ -53,7 +53,8 @@ def run_simulation():
     print("🚀 SENTINELX EDR — MANUAL THREAT DETECTION SIMULATION")
     print("=" * 65)
 
-    # 1. Check if Backend API is running
+    # 1. Check if Backend API is running and authenticate
+    headers = {}
     try:
         r = requests.get("http://127.0.0.1:8000/health", timeout=3)
         if r.status_code == 200:
@@ -61,6 +62,23 @@ def run_simulation():
         else:
             print("❌ Backend API responded with non-200 status.")
             sys.exit(1)
+
+        # Obtain auth token
+        login_res = requests.post(f"{BASE_URL}/auth/login/json", json={"username_or_email": "admin", "password": "AdminPassword123!"})
+        if login_res.status_code == 200:
+            token = login_res.json()["access_token"]
+            headers["Authorization"] = f"Bearer {token}"
+            print("🔑 Authenticated successfully with Backend API.")
+        else:
+            # Register admin if not present
+            reg_res = requests.post(f"{BASE_URL}/auth/register", json={
+                "username": "admin", "email": "admin@sentinelx.io", "password": "AdminPassword123!", "role": "ADMIN"
+            })
+            login_res = requests.post(f"{BASE_URL}/auth/login/json", json={"username_or_email": "admin", "password": "AdminPassword123!"})
+            if login_res.status_code == 200:
+                token = login_res.json()["access_token"]
+                headers["Authorization"] = f"Bearer {token}"
+                print("🔑 Registered & Authenticated admin user successfully.")
     except requests.exceptions.ConnectionError:
         print("\n⚠️ Backend API is NOT running at http://127.0.0.1:8000")
         print("   Please start backend server in another terminal:")
@@ -124,7 +142,7 @@ def run_simulation():
 
     # 5. Trigger Threat Engine Analysis
     print(f"\n🔍 Triggering Threat Engine Analysis POST {BASE_URL}/threats/analyze/{usb_event_id}...")
-    analyze_res = requests.post(f"{BASE_URL}/threats/analyze/{usb_event_id}")
+    analyze_res = requests.post(f"{BASE_URL}/threats/analyze/{usb_event_id}", headers=headers)
     if analyze_res.status_code != 200:
         print(f"❌ Analysis failed: {analyze_res.text}")
         sys.exit(1)
@@ -134,7 +152,7 @@ def run_simulation():
 
     # 6. Fetch and Display All Threats via GET /api/v1/threats
     print(f"\n📊 Fetching Threat Findings from GET {BASE_URL}/threats?usb_event_id={usb_event_id}...")
-    threats_res = requests.get(f"{BASE_URL}/threats", params={"usb_event_id": usb_event_id})
+    threats_res = requests.get(f"{BASE_URL}/threats", params={"usb_event_id": usb_event_id}, headers=headers)
     all_threats = threats_res.json()
 
     print("\n" + "=" * 65)

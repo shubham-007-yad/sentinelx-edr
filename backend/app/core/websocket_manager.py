@@ -14,9 +14,14 @@ class ConnectionManager:
     def __init__(self):
         self.active_connections: List[WebSocket] = []
         self.agent_connections: Dict[str, WebSocket] = {}
+        self.main_loop: Optional[asyncio.AbstractEventLoop] = None
 
     async def connect(self, websocket: WebSocket, device_id: Optional[str] = None):
         """Accepts a new WebSocket connection and adds it to the active pool or agent connections."""
+        try:
+            self.main_loop = asyncio.get_running_loop()
+        except Exception:
+            pass
         await websocket.accept()
         self.active_connections.append(websocket)
         if device_id:
@@ -84,7 +89,14 @@ class ConnectionManager:
         await self.broadcast(payload)
 
     def broadcast_sync(self, message: Union[str, Dict[str, Any]]):
-        """Synchronous helper method to trigger broadcasts from sync contexts."""
+        """Synchronous helper method to trigger broadcasts from sync contexts in a thread-safe manner."""
+        if self.main_loop and self.main_loop.is_running():
+            try:
+                asyncio.run_coroutine_threadsafe(self.broadcast(message), self.main_loop)
+                return
+            except Exception as e:
+                logger.warning(f"Threadsafe broadcast failed, fallback to loop: {e}")
+
         try:
             loop = asyncio.get_running_loop()
             if loop.is_running():
@@ -93,7 +105,10 @@ class ConnectionManager:
                 loop.run_until_complete(self.broadcast(message))
         except RuntimeError:
             try:
-                asyncio.run(self.broadcast(message))
+                if self.main_loop and self.main_loop.is_running():
+                    asyncio.run_coroutine_threadsafe(self.broadcast(message), self.main_loop)
+                else:
+                    asyncio.run(self.broadcast(message))
             except Exception as e:
                 logger.error(f"Failed to run broadcast in async loop: {e}")
 

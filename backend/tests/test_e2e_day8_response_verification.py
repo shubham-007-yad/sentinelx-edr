@@ -2,6 +2,7 @@ import os
 import tempfile
 import uuid
 import pytest
+from sqlalchemy.orm import Session
 from fastapi.testclient import TestClient
 
 from app.main import app
@@ -13,12 +14,34 @@ from app.services.response_service import execute_response, get_audit_logs_by_ac
 from app.core.websocket_manager import websocket_manager
 from agent.quarantine_manager import QuarantineManager
 
+from app.auth.jwt import create_access_token
+from app.models.user import User, UserRole
+from app.services import user_service
+from app.schemas.user import UserCreate
+
 client = TestClient(app)
 
 
 def setup_db():
     Base.metadata.create_all(bind=engine)
     return SessionLocal()
+
+
+def get_auth_headers(db: Session, username: str = "ADMIN", role: UserRole = UserRole.ADMIN):
+    user = db.query(User).filter((User.username == username) | (User.email == f"{username.lower()}@sentinelx.io")).first()
+    if not user:
+        user = user_service.create_user(
+            db,
+            UserCreate(
+                username=username,
+                email=f"{username.lower()}_{uuid.uuid4().hex[:6]}@sentinelx.io",
+                password="TestPassword123!",
+                role=role
+            )
+        )
+    role_val = user.role.value if hasattr(user.role, "value") else str(user.role)
+    token = create_access_token(subject=user.username, role=role_val)
+    return {"Authorization": f"Bearer {token}"}
 
 
 def test_scenario_1_quarantine_malicious_executable():
@@ -81,7 +104,8 @@ def test_scenario_2_simulate_device_isolation():
         usb_event_id = pre_iso_event.json()["id"]
 
         # 2. Trigger Isolation Action
-        iso_res = client.post(f"/api/v1/devices/{device.id}/isolate")
+        headers = get_auth_headers(db)
+        iso_res = client.post(f"/api/v1/devices/{device.id}/isolate", headers=headers)
         assert iso_res.status_code == 200
         assert iso_res.json()["status"] == "ISOLATED"
 
@@ -137,7 +161,8 @@ def test_scenario_3_retry_failed_response():
         db.refresh(action)
 
         # Trigger Retry via API
-        retry_res = client.post(f"/api/v1/responses/{action.id}/retry")
+        headers = get_auth_headers(db)
+        retry_res = client.post(f"/api/v1/responses/{action.id}/retry", headers=headers)
         assert retry_res.status_code == 200
         data = retry_res.json()
         assert data["status"] in ["RUNNING", "SUCCESS"]
@@ -180,7 +205,8 @@ def test_scenario_4_prevent_duplicate_commands():
             "action_type": "ISOLATE",
             "initiated_by": "ADMIN"
         }
-        res = client.post("/api/v1/responses/trigger", json=dup_payload)
+        headers = get_auth_headers(db)
+        res = client.post("/api/v1/responses/trigger", json=dup_payload, headers=headers)
         assert res.status_code == 409
         assert "already PENDING" in res.json()["detail"]
 
@@ -207,7 +233,8 @@ def test_scenario_5_dashboard_live_status_updates():
             "action_type": "QUARANTINE",
             "initiated_by": "ADMIN"
         }
-        res = client.post("/api/v1/responses/trigger", json=trig_payload)
+        headers = get_auth_headers(db)
+        res = client.post("/api/v1/responses/trigger", json=trig_payload, headers=headers)
         assert res.status_code == 201
         action_id = res.json()["id"]
 

@@ -12,6 +12,7 @@ from app.models.threat import Threat, ThreatType, ThreatSeverity
 from app.models.alert import Alert, AlertSeverity, AlertStatus
 from app.models.response_action import ResponseAction, ResponseActionType, ResponseActionStatus
 from app.detection.network import NetworkDetectionEngine
+from app.auth.jwt import create_access_token
 
 client = TestClient(app)
 
@@ -240,6 +241,25 @@ def test_e2e_day10_master_network_validation():
         # ==========================================
         # STEP 5: Test Response & Audit Logging (Block IP, Ignore, Allowlist, Audit Logs)
         # ==========================================
+        from app.models.user import User, UserRole
+        from app.services import user_service
+        from app.schemas.user import UserCreate
+
+        user = db.query(User).filter(User.username == "ANALYST_SMITH").first()
+        if not user:
+            user = user_service.create_user(
+                db,
+                UserCreate(
+                    username="ANALYST_SMITH",
+                    email="analyst_smith@sentinelx.io",
+                    password="AnalystPassword123!",
+                    role=UserRole.ANALYST
+                )
+            )
+
+        token = create_access_token(subject=user.username, role=user.role.value)
+        headers = {"Authorization": f"Bearer {token}"}
+
         # Action 1: Block IP
         res_block = client.post("/api/v1/responses/trigger", json={
             "device_id": str(device.id),
@@ -247,7 +267,7 @@ def test_e2e_day10_master_network_validation():
             "action_type": "BLOCK_IP",
             "initiated_by": "ANALYST_SMITH",
             "parameters": {"remote_ip": "185.220.101.5", "remote_port": 4444}
-        })
+        }, headers=headers)
         assert res_block.status_code == 201, res_block.text
         act_block_id = res_block.json()["id"]
 
@@ -258,7 +278,7 @@ def test_e2e_day10_master_network_validation():
             "action_type": "IGNORE",
             "initiated_by": "ANALYST_SMITH",
             "parameters": {"reason": "Authorized SOC testing"}
-        })
+        }, headers=headers)
         assert res_ignore.status_code == 201, res_ignore.text
 
         # Action 3: Allowlist
@@ -268,11 +288,11 @@ def test_e2e_day10_master_network_validation():
             "action_type": "ADD_ALLOWLIST",
             "initiated_by": "ANALYST_SMITH",
             "parameters": {"process_name": "powershell.exe"}
-        })
+        }, headers=headers)
         assert res_allow.status_code == 201, res_allow.text
 
         # Verify Stage-by-Stage Audit Trail Log Entry
-        res_audit = client.get(f"/api/v1/responses/{act_block_id}/audit-logs")
+        res_audit = client.get(f"/api/v1/responses/{act_block_id}/audit-logs", headers=headers)
         assert res_audit.status_code == 200, res_audit.text
         audit_logs = res_audit.json()
         assert len(audit_logs) >= 2  # INITIATED and SUCCESS/ACKNOWLEDGED

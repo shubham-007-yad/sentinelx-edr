@@ -159,8 +159,27 @@ def test_complete_phase8_flow(test_db: Session, client: TestClient):
     # -------------------------------------------------------------
     # STEP 5: Display Threats via REST APIs (Display Threats)
     # -------------------------------------------------------------
+    from app.auth.jwt import create_access_token
+    from app.models.user import User, UserRole
+    from app.services import user_service
+    from app.schemas.user import UserCreate
+
+    user = test_db.query(User).filter(User.username == "phase8_analyst").first()
+    if not user:
+        user = user_service.create_user(
+            test_db,
+            UserCreate(
+                username="phase8_analyst",
+                email="phase8@sentinelx.io",
+                password="TestPassword123!",
+                role=UserRole.ANALYST
+            )
+        )
+    token = create_access_token(subject=user.username, role=user.role.value)
+    headers = {"Authorization": f"Bearer {token}"}
+
     # 5a. GET /api/v1/threats
-    res_list = client.get("/api/v1/threats")
+    res_list = client.get("/api/v1/threats", headers=headers)
     assert res_list.status_code == 200
     threats_data = res_list.json()
     assert len(threats_data) >= 5
@@ -175,31 +194,32 @@ def test_complete_phase8_flow(test_db: Session, client: TestClient):
     assert "detected_at" in sample
 
     # 5b. GET /api/v1/threats with Severity Filter
-    res_crit = client.get("/api/v1/threats?severity=CRITICAL")
+    res_crit = client.get("/api/v1/threats?severity=CRITICAL", headers=headers)
     assert res_crit.status_code == 200
     assert all(t["severity"] == "CRITICAL" for t in res_crit.json())
 
     # 5c. GET /api/v1/threats with Search Filter
-    res_search = client.get("/api/v1/threats?search=q3_invoice")
+    res_search = client.get("/api/v1/threats?search=q3_invoice", headers=headers)
     assert res_search.status_code == 200
     assert any("q3_invoice" in t["file_name"] for t in res_search.json())
 
     # 5d. GET /api/v1/threats/{id}
     target_id = created_threats[0].id
-    res_detail = client.get(f"/api/v1/threats/{target_id}")
+    res_detail = client.get(f"/api/v1/threats/{target_id}", headers=headers)
     assert res_detail.status_code == 200
     assert res_detail.json()["id"] == str(target_id)
 
     # 5e. PATCH /api/v1/threats/{id}/status
     res_patch = client.patch(
         f"/api/v1/threats/{target_id}/status",
-        json={"status": "RESOLVED"}
+        json={"status": "RESOLVED"},
+        headers=headers
     )
     assert res_patch.status_code == 200
     assert res_patch.json()["status"] == "RESOLVED"
 
     # 5f. GET /api/v1/threats/summary
-    res_summary = client.get("/api/v1/threats/summary")
+    res_summary = client.get("/api/v1/threats/summary", headers=headers)
     assert res_summary.status_code == 200
     summary_data = res_summary.json()
     assert summary_data["total_threats"] >= 5
